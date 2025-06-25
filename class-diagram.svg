@@ -1,0 +1,1006 @@
+<svg version="1.1" baseProfile="full" width="9573.0" height="694.0" viewBox="0 0 9573 694" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events">
+<desc >#.interface: fill=lightblue
+#.enumeration: fill=lightgreen
+#.type: fill=lightgray
+
+[LinkAdapter|\#logger: Logger;\#circuitBreaker: CircuitBreaker;\#linkType: LinkType|+abstract checkAvailability(): Promise&lt;boolean&gt;;+abstract measureBandwidth(): Promise&lt;number&gt;;+abstract measureLatency(): Promise&lt;number&gt;;+abstract transmit(): Promise&lt;void&gt;;+getLinkQuality(): Promise&lt;LinkQuality&gt;;-calculateReliability(): number]
+[LanAdapter||+checkAvailability(): Promise&lt;boolean&gt;;+measureBandwidth(): Promise&lt;number&gt;;+measureLatency(): Promise&lt;number&gt;;+transmit(): Promise&lt;void&gt;]
+[MobileAdapter||+checkAvailability(): Promise&lt;boolean&gt;;+measureBandwidth(): Promise&lt;number&gt;;+measureLatency(): Promise&lt;number&gt;;+transmit(): Promise&lt;void&gt;]
+[WifiAdapter||+checkAvailability(): Promise&lt;boolean&gt;;+measureBandwidth(): Promise&lt;number&gt;;+measureLatency(): Promise&lt;number&gt;;+transmit(): Promise&lt;void&gt;]
+[LinkAdapter]&lt;:-[LanAdapter]
+[LinkAdapter]&lt;:-[MobileAdapter]
+[LinkAdapter]&lt;:-[WifiAdapter]
+[MonitorAdapter|-logger: Logger;-flowControlManagerUrl: string;-agentId: string|+sendMonitoringData(): Promise&lt;void&gt;;+performSpeedTest(): Promise&lt;SpeedTestResult&gt;;-measureLatency(): Promise&lt;number&gt;;-getSystemMetrics(): Promise&lt;{ memoryUsage: MemoryUsage; cpuUsage: CpuUsage; uptime: number; }&gt;]
+[&lt;interface&gt;SpeedTestResult|+downloadSpeed: number;+uploadSpeed: number;+latency: number;+packetLoss: number|]
+[FlowControlAgent|-logger: Logger;-agentId: string;-apiServer: ApiServer;-receiver: Receiver;-cache: Cache;-scheduler: SchedulerBase;-sender: Sender;-flowControl: FlowControl;-configManager: ConfigurationManager;-running: boolean;-linkMonitoringInterval?: Timeout;-apiPort: number;-proxyServerUrl: string;-flowControlManagerUrl: string|+start(): Promise&lt;void&gt;;+stop(): Promise&lt;void&gt;;-handleApiMessage(): void;-handleValidMessage(): void;-handleScheduledMessage(): Promise&lt;void&gt;;-handleConfigUpdate(): void;-restartScheduler(): void;-startLinkMonitoring(): void;-stopLinkMonitoring(): void;-getStatus(): AgentStatus]
+[ApiServer|-app: any;-logger: Logger;-token: string;-port: number;-onMessage: (message: Message) =&gt; void;-getStatus: () =&gt; AgentStatus|-generateToken(): string;-setupMiddleware(): void;-setupRoutes(): void;+start(): Promise&lt;void&gt;]
+[Cache|-messages: Map&lt;MessagePriority, Message\[\]&gt;;-logger: Logger|+storeMessage(): void;+getNextMessage(): Message;+getQueueSize(): number;+getQueueSizeByPriority(): number]
+[ConfigurationManager|-logger: Logger;-config: Configuration;-syncRetries: number;-maxSyncRetries: 3;-configFilePath: string;-syncInterval?: Timeout;-flowControlManagerUrl: string;-onConfigUpdate: (config: Configuration) =&gt; void|+initialize(): Promise&lt;void&gt;;-loadLocalConfig(): void;-saveLocalConfig(): void;+syncConfiguration(): Promise&lt;boolean&gt;;-enterSlowMode(): void;-startPeriodicSync(): void;+getConfiguration(): Configuration;+stop(): void]
+[FlowControl|-logger: Logger;-linkQualities: Map&lt;LinkType, LinkQuality&gt;;-selectedLink: LinkType;-schedulerMode: SchedulerMode;-sender: Sender|+updateLinkQualities(): Promise&lt;void&gt;;-selectBestLink(): void;+getSelectedLink(): LinkType;+setSelectedLink(): void;+getSchedulerMode(): SchedulerMode;+setSchedulerMode(): void;+getLinkQualities(): LinkQuality\[\]]
+[Receiver|-logger: Logger;-onValidMessage: (message: Message) =&gt; void|+receiveMessage(): boolean;-validateMessage(): boolean]
+[SchedulerBase|\#logger: Logger;\#running: boolean;\#cache: Cache;\#onMessage: (message: Message) =&gt; void|+abstract start(): void;+abstract stop(): void]
+[ContinuousScheduler|-intervalId?: Timeout|+start(): void;+stop(): void;-processMessages(): void]
+[IntervalScheduler|-intervalId?: Timeout;-intervalMs: number|+start(): void;+stop(): void;-processBatch(): void]
+[SchedulerFactory||+static create(): SchedulerBase]
+[SchedulerBase]&lt;:-[ContinuousScheduler]
+[SchedulerBase]&lt;:-[IntervalScheduler]
+[Sender|-logger: Logger;-adapters: Map&lt;LinkType, LinkAdapter&gt;;-proxyServerUrl: string|+sendMessage(): Promise&lt;void&gt;;+getAvailableLinks(): LinkType\[\];+getLinkQuality(): Promise&lt;LinkQuality&gt;]
+[DiscoveryService|-logger: Logger;-lanSocket?: Socket;-wanSocket?: Socket;-lanPort: 8888;-wanPort: 8889;-multicastAddress: &quot;224.0.0.1&quot;;-agentId: string;-onDiscovery: (message: DiscoveryMessage, remote: RemoteInfo) =&gt; void|+start(): void;+stop(): void;-startLanDiscovery(): void;-startWanDiscovery(): void;+sendLanBroadcast(): void;+sendWanMulticast(): void;+announcePresence(): void]
+[&lt;interface&gt;DiscoveryMessage|+type: &quot;discover&quot; \| &quot;announce&quot;;+agentId: string;+timestamp: number;+data?: any|]
+[FlowControlManager|-app: any;-logger: Logger;-agents: Map&lt;string, RegisteredAgent&gt;;-defaultConfiguration: Configuration;-port: number|-setupMiddleware(): void;-setupRoutes(): void;+start(): Promise&lt;void&gt;;-startAgentCleanup(): void]
+[&lt;interface&gt;RegisteredAgent|+id: string;+lastSeen: number;+status: AgentStatus;+configuration: Configuration|]
+[ProxyServer|-app: any;-wss: WebSocketServer;-logger: Logger;-connectedClients: Set&lt;WebSocket&gt;;-httpPort: number;-wsPort: number|-setupHttpServer(): void;-setupWebSocketServer(): void;-broadcastMessage(): void;+start(): Promise&lt;void&gt;]
+[&lt;interface&gt;Message|+id: string;+content: string;+priority: MessagePriority;+timestamp: number;+retries: number;+maxRetries: number|]
+[&lt;interface&gt;LinkQuality|+type: LinkType;+available: boolean;+bandwidth: number;+latency: number;+reliability: number;+timestamp: number|]
+[&lt;interface&gt;Configuration|+schedulerMode: SchedulerMode;+selectedLink: LinkType;+intervalMs: number;+maxRetries: number;+proxyServerUrl: string;+token: string|]
+[&lt;interface&gt;AgentStatus|+id: string;+status: &quot;active&quot; \| &quot;inactive&quot; \| &quot;slow&quot;;+selectedLink: LinkType;+schedulerMode: SchedulerMode;+messagesInQueue: number;+linkQualities: LinkQuality\[\];+timestamp: number|]
+[&lt;enumeration&gt;MessagePriority|LOW;MEDIUM;HIGH;CRITICAL]
+[&lt;enumeration&gt;LinkType|LAN;WIFI;MOBILE]
+[&lt;enumeration&gt;SchedulerMode|CONTINUOUS;INTERVAL]
+[CircuitBreaker|-failures: number;-lastFailureTime: number;-state: &quot;CLOSED&quot; \| &quot;OPEN&quot; \| &quot;HALF_OPEN&quot;;-threshold: number;-timeout: number|+execute(): Promise&lt;T&gt;;-onSuccess(): void;-onFailure(): void]
+[Logger|-logger: winston.Logger|+info(): void;+error(): void;+warn(): void;+debug(): void]
+[RouteManager|-logger: Logger;-currentRoutes: Map&lt;string, string&gt;|+setRoute(): Promise&lt;void&gt;;+removeRoute(): Promise&lt;void&gt;;+setDefaultRoute(): Promise&lt;void&gt;;+getCurrentRoutes(): Map&lt;string, string&gt;]</desc>
+<g stroke-width="1.0" text-align="left" font="12pt Helvetica, Arial, sans-serif" font-size="12pt" font-family="Helvetica" font-weight="normal" font-style="normal">
+<g font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" stroke-width="3.0" stroke-linejoin="round" stroke-linecap="round" stroke="#33322E">
+<g stroke="transparent" fill="transparent">
+<rect x="0.0" y="0.0" height="694.0" width="9573.0" stroke="none"></rect>
+</g>
+<g transform="translate(8, 8)" fill="#33322E">
+<g transform="translate(20, 20)" fill="#eee8d5" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal">
+<path d="M273.2 342.0 L171.5 473 L171.5 505 L171.5 505.0 " fill="none"></path>
+<path d="M277.5 345.3 L273.2 342.0 L269.0 338.8 L281.4 331.5 Z"></path>
+<path d="M452.8 342.0 L554.5 473 L554.5 505 L554.5 505.0 " fill="none"></path>
+<path d="M457.0 338.8 L452.8 342.0 L448.5 345.3 L444.6 331.5 Z"></path>
+<path d="M582.2 255.0 L2257.25 473 L2257.25 505 L2257.3 505.0 " fill="none"></path>
+<path d="M582.9 249.7 L582.2 255.0 L581.5 260.3 L569.0 253.3 Z"></path>
+<path d="M3898.8 257.8 L2579.25 473 L2579.25 501 L2579.3 501.0 " fill="none"></path>
+<path d="M3899.7 263.0 L3898.8 257.8 L3898.0 252.5 L3912.0 255.6 Z"></path>
+<path d="M4136.1 319.0 L4212 473 L4212 493 L4212.0 493.0 " fill="none"></path>
+<path d="M4140.9 316.6 L4136.1 319.0 L4131.3 321.3 L4130.2 307.0 Z"></path>
+<g data-name="LinkAdapter">
+<g fill="#eee8d5" stroke="#33322E" data-name="LinkAdapter">
+<rect x="157.0" y="121.5" height="210.0" width="412.0" data-name="LinkAdapter"></rect>
+<path d="M157.0 153.5 L569.0 153.5" fill="none" data-name="LinkAdapter"></path>
+<path d="M157.0 218.5 L569.0 218.5" fill="none" data-name="LinkAdapter"></path>
+</g>
+<g transform="translate(157, 121.5)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="LinkAdapter" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="LinkAdapter" data-compartment="0">
+<a id="src\adapters\linkAdapter.ts.LinkAdapter" xlink:href="src\adapters\linkAdapter.ts"><text x="198.0" y="14.1" stroke="none" text-anchor="middle" data-name="LinkAdapter" data-compartment="0">LinkAdapter</text></a>
+
+</g>
+</g>
+<g transform="translate(157, 153.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="LinkAdapter" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="LinkAdapter" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="LinkAdapter" data-compartment="1">#logger: Logger</text>
+<text x="0.0" y="30.3" stroke="none" data-name="LinkAdapter" data-compartment="1">#circuitBreaker: CircuitBreaker</text>
+<text x="0.0" y="46.5" stroke="none" data-name="LinkAdapter" data-compartment="1">#linkType: LinkType</text>
+
+</g>
+</g>
+<g transform="translate(157, 218.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="LinkAdapter" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="LinkAdapter" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="LinkAdapter" data-compartment="2">+abstract checkAvailability(): Promise&lt;boolean&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="LinkAdapter" data-compartment="2">+abstract measureBandwidth(): Promise&lt;number&gt;</text>
+<text x="0.0" y="46.5" stroke="none" data-name="LinkAdapter" data-compartment="2">+abstract measureLatency(): Promise&lt;number&gt;</text>
+<text x="0.0" y="62.7" stroke="none" data-name="LinkAdapter" data-compartment="2">+abstract transmit(): Promise&lt;void&gt;</text>
+<text x="0.0" y="78.9" stroke="none" data-name="LinkAdapter" data-compartment="2">+getLinkQuality(): Promise&lt;LinkQuality&gt;</text>
+<text x="0.0" y="95.1" stroke="none" data-name="LinkAdapter" data-compartment="2">-calculateReliability(): number</text>
+
+</g>
+</g>
+</g>
+<g data-name="LanAdapter">
+<g fill="#eee8d5" stroke="#33322E" data-name="LanAdapter">
+<rect x="0.0" y="505.0" height="121.0" width="343.0" data-name="LanAdapter"></rect>
+<path d="M0.0 537.0 L343.0 537.0" fill="none" data-name="LanAdapter"></path>
+<path d="M0.0 545.0 L343.0 545.0" fill="none" data-name="LanAdapter"></path>
+</g>
+<g transform="translate(0, 505)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="LanAdapter" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="LanAdapter" data-compartment="0">
+<a id="src\adapters\linkAdapter.ts.LanAdapter" xlink:href="src\adapters\linkAdapter.ts"><text x="163.5" y="14.1" stroke="none" text-anchor="middle" data-name="LanAdapter" data-compartment="0">LanAdapter</text></a>
+
+</g>
+</g>
+<g transform="translate(0, 537)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="LanAdapter" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" data-name="LanAdapter" data-compartment="1">
+
+</g>
+</g>
+<g transform="translate(0, 545)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="LanAdapter" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="LanAdapter" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="LanAdapter" data-compartment="2">+checkAvailability(): Promise&lt;boolean&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="LanAdapter" data-compartment="2">+measureBandwidth(): Promise&lt;number&gt;</text>
+<text x="0.0" y="46.5" stroke="none" data-name="LanAdapter" data-compartment="2">+measureLatency(): Promise&lt;number&gt;</text>
+<text x="0.0" y="62.7" stroke="none" data-name="LanAdapter" data-compartment="2">+transmit(): Promise&lt;void&gt;</text>
+
+</g>
+</g>
+</g>
+<g data-name="MobileAdapter">
+<g fill="#eee8d5" stroke="#33322E" data-name="MobileAdapter">
+<rect x="383.0" y="505.0" height="121.0" width="343.0" data-name="MobileAdapter"></rect>
+<path d="M383.0 537.0 L726.0 537.0" fill="none" data-name="MobileAdapter"></path>
+<path d="M383.0 545.0 L726.0 545.0" fill="none" data-name="MobileAdapter"></path>
+</g>
+<g transform="translate(383, 505)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="MobileAdapter" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="MobileAdapter" data-compartment="0">
+<a id="src\adapters\linkAdapter.ts.MobileAdapter" xlink:href="src\adapters\linkAdapter.ts"><text x="163.5" y="14.1" stroke="none" text-anchor="middle" data-name="MobileAdapter" data-compartment="0">MobileAdapter</text></a>
+
+</g>
+</g>
+<g transform="translate(383, 537)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="MobileAdapter" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" data-name="MobileAdapter" data-compartment="1">
+
+</g>
+</g>
+<g transform="translate(383, 545)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="MobileAdapter" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="MobileAdapter" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="MobileAdapter" data-compartment="2">+checkAvailability(): Promise&lt;boolean&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="MobileAdapter" data-compartment="2">+measureBandwidth(): Promise&lt;number&gt;</text>
+<text x="0.0" y="46.5" stroke="none" data-name="MobileAdapter" data-compartment="2">+measureLatency(): Promise&lt;number&gt;</text>
+<text x="0.0" y="62.7" stroke="none" data-name="MobileAdapter" data-compartment="2">+transmit(): Promise&lt;void&gt;</text>
+
+</g>
+</g>
+</g>
+<g data-name="WifiAdapter">
+<g fill="#eee8d5" stroke="#33322E" data-name="WifiAdapter">
+<rect x="2085.8" y="505.0" height="121.0" width="343.0" data-name="WifiAdapter"></rect>
+<path d="M2085.8 537.0 L2428.8 537.0" fill="none" data-name="WifiAdapter"></path>
+<path d="M2085.8 545.0 L2428.8 545.0" fill="none" data-name="WifiAdapter"></path>
+</g>
+<g transform="translate(2085.75, 505)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="WifiAdapter" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="WifiAdapter" data-compartment="0">
+<a id="src\adapters\linkAdapter.ts.WifiAdapter" xlink:href="src\adapters\linkAdapter.ts"><text x="163.5" y="14.1" stroke="none" text-anchor="middle" data-name="WifiAdapter" data-compartment="0">WifiAdapter</text></a>
+
+</g>
+</g>
+<g transform="translate(2085.75, 537)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="WifiAdapter" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" data-name="WifiAdapter" data-compartment="1">
+
+</g>
+</g>
+<g transform="translate(2085.75, 545)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="WifiAdapter" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="WifiAdapter" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="WifiAdapter" data-compartment="2">+checkAvailability(): Promise&lt;boolean&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="WifiAdapter" data-compartment="2">+measureBandwidth(): Promise&lt;number&gt;</text>
+<text x="0.0" y="46.5" stroke="none" data-name="WifiAdapter" data-compartment="2">+measureLatency(): Promise&lt;number&gt;</text>
+<text x="0.0" y="62.7" stroke="none" data-name="WifiAdapter" data-compartment="2">+transmit(): Promise&lt;void&gt;</text>
+
+</g>
+</g>
+</g>
+<g data-name="MonitorAdapter">
+<g fill="#eee8d5" stroke="#33322E" data-name="MonitorAdapter">
+<rect x="609.0" y="113.5" height="226.0" width="507.0" data-name="MonitorAdapter"></rect>
+<path d="M609.0 145.5 L1116.0 145.5" fill="none" data-name="MonitorAdapter"></path>
+<path d="M609.0 210.5 L1116.0 210.5" fill="none" data-name="MonitorAdapter"></path>
+</g>
+<g transform="translate(609, 113.5)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="MonitorAdapter" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="MonitorAdapter" data-compartment="0">
+<a id="src\adapters\monitorAdapter.ts.MonitorAdapter" xlink:href="src\adapters\monitorAdapter.ts"><text x="245.5" y="14.1" stroke="none" text-anchor="middle" data-name="MonitorAdapter" data-compartment="0">MonitorAdapter</text></a>
+
+</g>
+</g>
+<g transform="translate(609, 145.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="MonitorAdapter" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="MonitorAdapter" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="MonitorAdapter" data-compartment="1">-logger: Logger</text>
+<text x="0.0" y="30.3" stroke="none" data-name="MonitorAdapter" data-compartment="1">-flowControlManagerUrl: string</text>
+<text x="0.0" y="46.5" stroke="none" data-name="MonitorAdapter" data-compartment="1">-agentId: string</text>
+
+</g>
+</g>
+<g transform="translate(609, 210.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="MonitorAdapter" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="MonitorAdapter" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="MonitorAdapter" data-compartment="2">+sendMonitoringData(): Promise&lt;void&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="MonitorAdapter" data-compartment="2">+performSpeedTest(): Promise&lt;SpeedTestResult&gt;</text>
+<text x="0.0" y="46.5" stroke="none" data-name="MonitorAdapter" data-compartment="2">-measureLatency(): Promise&lt;number&gt;</text>
+<text x="0.0" y="62.7" stroke="none" data-name="MonitorAdapter" data-compartment="2">-getSystemMetrics(): Promise&lt;{ memoryUsage: MemoryUsage</text>
+<text x="0.0" y="78.9" stroke="none" data-name="MonitorAdapter" data-compartment="2">cpuUsage: CpuUsage</text>
+<text x="0.0" y="95.1" stroke="none" data-name="MonitorAdapter" data-compartment="2">uptime: number</text>
+<text x="0.0" y="111.3" stroke="none" data-name="MonitorAdapter" data-compartment="2">}&gt;</text>
+
+</g>
+</g>
+</g>
+<g data-name="SpeedTestResult">
+<g fill="lightblue" stroke="#33322E" data-name="SpeedTestResult">
+<rect x="1156.0" y="166.0" height="121.0" width="223.0" data-name="SpeedTestResult"></rect>
+<path d="M1156.0 198.0 L1379.0 198.0" fill="none" data-name="SpeedTestResult"></path>
+<path d="M1156.0 279.0 L1379.0 279.0" fill="none" data-name="SpeedTestResult"></path>
+</g>
+<g transform="translate(1156, 166)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="SpeedTestResult" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="SpeedTestResult" data-compartment="0">
+<a id="src\adapters\monitorAdapter.ts.SpeedTestResult" xlink:href="src\adapters\monitorAdapter.ts"><text x="103.5" y="14.1" stroke="none" text-anchor="middle" data-name="SpeedTestResult" data-compartment="0">SpeedTestResult</text></a>
+
+</g>
+</g>
+<g transform="translate(1156, 198)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="SpeedTestResult" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="SpeedTestResult" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="SpeedTestResult" data-compartment="1">+downloadSpeed: number</text>
+<text x="0.0" y="30.3" stroke="none" data-name="SpeedTestResult" data-compartment="1">+uploadSpeed: number</text>
+<text x="0.0" y="46.5" stroke="none" data-name="SpeedTestResult" data-compartment="1">+latency: number</text>
+<text x="0.0" y="62.7" stroke="none" data-name="SpeedTestResult" data-compartment="1">+packetLoss: number</text>
+
+</g>
+</g>
+<g transform="translate(1156, 279)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="SpeedTestResult" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" data-name="SpeedTestResult" data-compartment="2">
+
+</g>
+</g>
+</g>
+<g data-name="FlowControlAgent">
+<g fill="#eee8d5" stroke="#33322E" data-name="FlowControlAgent">
+<rect x="1419.0" y="0.0" height="453.0" width="371.0" data-name="FlowControlAgent"></rect>
+<path d="M1419.0 32.0 L1790.0 32.0" fill="none" data-name="FlowControlAgent"></path>
+<path d="M1419.0 275.0 L1790.0 275.0" fill="none" data-name="FlowControlAgent"></path>
+</g>
+<g transform="translate(1419, 0)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="FlowControlAgent" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="FlowControlAgent" data-compartment="0">
+<a id="src\agent\flowControlAgent.ts.FlowControlAgent" xlink:href="src\agent\flowControlAgent.ts"><text x="177.5" y="14.1" stroke="none" text-anchor="middle" data-name="FlowControlAgent" data-compartment="0">FlowControlAgent</text></a>
+
+</g>
+</g>
+<g transform="translate(1419, 32)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="FlowControlAgent" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="FlowControlAgent" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="FlowControlAgent" data-compartment="1">-logger: Logger</text>
+<text x="0.0" y="30.3" stroke="none" data-name="FlowControlAgent" data-compartment="1">-agentId: string</text>
+<text x="0.0" y="46.5" stroke="none" data-name="FlowControlAgent" data-compartment="1">-apiServer: ApiServer</text>
+<text x="0.0" y="62.7" stroke="none" data-name="FlowControlAgent" data-compartment="1">-receiver: Receiver</text>
+<text x="0.0" y="78.9" stroke="none" data-name="FlowControlAgent" data-compartment="1">-cache: Cache</text>
+<text x="0.0" y="95.1" stroke="none" data-name="FlowControlAgent" data-compartment="1">-scheduler: SchedulerBase</text>
+<text x="0.0" y="111.3" stroke="none" data-name="FlowControlAgent" data-compartment="1">-sender: Sender</text>
+<text x="0.0" y="127.5" stroke="none" data-name="FlowControlAgent" data-compartment="1">-flowControl: FlowControl</text>
+<text x="0.0" y="143.7" stroke="none" data-name="FlowControlAgent" data-compartment="1">-configManager: ConfigurationManager</text>
+<text x="0.0" y="159.9" stroke="none" data-name="FlowControlAgent" data-compartment="1">-running: boolean</text>
+<text x="0.0" y="176.1" stroke="none" data-name="FlowControlAgent" data-compartment="1">-linkMonitoringInterval?: Timeout</text>
+<text x="0.0" y="192.3" stroke="none" data-name="FlowControlAgent" data-compartment="1">-apiPort: number</text>
+<text x="0.0" y="208.5" stroke="none" data-name="FlowControlAgent" data-compartment="1">-proxyServerUrl: string</text>
+<text x="0.0" y="224.7" stroke="none" data-name="FlowControlAgent" data-compartment="1">-flowControlManagerUrl: string</text>
+
+</g>
+</g>
+<g transform="translate(1419, 275)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="FlowControlAgent" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="FlowControlAgent" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="FlowControlAgent" data-compartment="2">+start(): Promise&lt;void&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="FlowControlAgent" data-compartment="2">+stop(): Promise&lt;void&gt;</text>
+<text x="0.0" y="46.5" stroke="none" data-name="FlowControlAgent" data-compartment="2">-handleApiMessage(): void</text>
+<text x="0.0" y="62.7" stroke="none" data-name="FlowControlAgent" data-compartment="2">-handleValidMessage(): void</text>
+<text x="0.0" y="78.9" stroke="none" data-name="FlowControlAgent" data-compartment="2">-handleScheduledMessage(): Promise&lt;void&gt;</text>
+<text x="0.0" y="95.1" stroke="none" data-name="FlowControlAgent" data-compartment="2">-handleConfigUpdate(): void</text>
+<text x="0.0" y="111.3" stroke="none" data-name="FlowControlAgent" data-compartment="2">-restartScheduler(): void</text>
+<text x="0.0" y="127.5" stroke="none" data-name="FlowControlAgent" data-compartment="2">-startLinkMonitoring(): void</text>
+<text x="0.0" y="143.7" stroke="none" data-name="FlowControlAgent" data-compartment="2">-stopLinkMonitoring(): void</text>
+<text x="0.0" y="159.9" stroke="none" data-name="FlowControlAgent" data-compartment="2">-getStatus(): AgentStatus</text>
+
+</g>
+</g>
+</g>
+<g data-name="ApiServer">
+<g fill="#eee8d5" stroke="#33322E" data-name="ApiServer">
+<rect x="1830.0" y="113.5" height="226.0" width="353.0" data-name="ApiServer"></rect>
+<path d="M1830.0 145.5 L2183.0 145.5" fill="none" data-name="ApiServer"></path>
+<path d="M1830.0 258.5 L2183.0 258.5" fill="none" data-name="ApiServer"></path>
+</g>
+<g transform="translate(1830, 113.5)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="ApiServer" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="ApiServer" data-compartment="0">
+<a id="src\api\apiServer.ts.ApiServer" xlink:href="src\api\apiServer.ts"><text x="168.5" y="14.1" stroke="none" text-anchor="middle" data-name="ApiServer" data-compartment="0">ApiServer</text></a>
+
+</g>
+</g>
+<g transform="translate(1830, 145.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="ApiServer" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="ApiServer" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="ApiServer" data-compartment="1">-app: any</text>
+<text x="0.0" y="30.3" stroke="none" data-name="ApiServer" data-compartment="1">-logger: Logger</text>
+<text x="0.0" y="46.5" stroke="none" data-name="ApiServer" data-compartment="1">-token: string</text>
+<text x="0.0" y="62.7" stroke="none" data-name="ApiServer" data-compartment="1">-port: number</text>
+<text x="0.0" y="78.9" stroke="none" data-name="ApiServer" data-compartment="1">-onMessage: (message: Message) =&gt; void</text>
+<text x="0.0" y="95.1" stroke="none" data-name="ApiServer" data-compartment="1">-getStatus: () =&gt; AgentStatus</text>
+
+</g>
+</g>
+<g transform="translate(1830, 258.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="ApiServer" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="ApiServer" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="ApiServer" data-compartment="2">-generateToken(): string</text>
+<text x="0.0" y="30.3" stroke="none" data-name="ApiServer" data-compartment="2">-setupMiddleware(): void</text>
+<text x="0.0" y="46.5" stroke="none" data-name="ApiServer" data-compartment="2">-setupRoutes(): void</text>
+<text x="0.0" y="62.7" stroke="none" data-name="ApiServer" data-compartment="2">+start(): Promise&lt;void&gt;</text>
+
+</g>
+</g>
+</g>
+<g data-name="Cache">
+<g fill="#eee8d5" stroke="#33322E" data-name="Cache">
+<rect x="2223.0" y="146.0" height="161.0" width="386.0" data-name="Cache"></rect>
+<path d="M2223.0 178.0 L2609.0 178.0" fill="none" data-name="Cache"></path>
+<path d="M2223.0 226.0 L2609.0 226.0" fill="none" data-name="Cache"></path>
+</g>
+<g transform="translate(2223, 146)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="Cache" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="Cache" data-compartment="0">
+<a id="src\core\cache.ts.Cache" xlink:href="src\core\cache.ts"><text x="185.0" y="14.1" stroke="none" text-anchor="middle" data-name="Cache" data-compartment="0">Cache</text></a>
+
+</g>
+</g>
+<g transform="translate(2223, 178)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Cache" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="Cache" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="Cache" data-compartment="1">-messages: Map&lt;MessagePriority, Message[]&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="Cache" data-compartment="1">-logger: Logger</text>
+
+</g>
+</g>
+<g transform="translate(2223, 226)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Cache" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="Cache" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="Cache" data-compartment="2">+storeMessage(): void</text>
+<text x="0.0" y="30.3" stroke="none" data-name="Cache" data-compartment="2">+getNextMessage(): Message</text>
+<text x="0.0" y="46.5" stroke="none" data-name="Cache" data-compartment="2">+getQueueSize(): number</text>
+<text x="0.0" y="62.7" stroke="none" data-name="Cache" data-compartment="2">+getQueueSizeByPriority(): number</text>
+
+</g>
+</g>
+</g>
+<g data-name="ConfigurationManager">
+<g fill="#eee8d5" stroke="#33322E" data-name="ConfigurationManager">
+<rect x="2649.0" y="64.5" height="324.0" width="399.0" data-name="ConfigurationManager"></rect>
+<path d="M2649.0 96.5 L3048.0 96.5" fill="none" data-name="ConfigurationManager"></path>
+<path d="M2649.0 242.5 L3048.0 242.5" fill="none" data-name="ConfigurationManager"></path>
+</g>
+<g transform="translate(2649, 64.5)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="ConfigurationManager" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="ConfigurationManager" data-compartment="0">
+<a id="src\core\configurationManager.ts.ConfigurationManager" xlink:href="src\core\configurationManager.ts"><text x="191.5" y="14.1" stroke="none" text-anchor="middle" data-name="ConfigurationManager" data-compartment="0">ConfigurationManager</text></a>
+
+</g>
+</g>
+<g transform="translate(2649, 96.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="ConfigurationManager" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="ConfigurationManager" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="ConfigurationManager" data-compartment="1">-logger: Logger</text>
+<text x="0.0" y="30.3" stroke="none" data-name="ConfigurationManager" data-compartment="1">-config: Configuration</text>
+<text x="0.0" y="46.5" stroke="none" data-name="ConfigurationManager" data-compartment="1">-syncRetries: number</text>
+<text x="0.0" y="62.7" stroke="none" data-name="ConfigurationManager" data-compartment="1">-maxSyncRetries: 3</text>
+<text x="0.0" y="78.9" stroke="none" data-name="ConfigurationManager" data-compartment="1">-configFilePath: string</text>
+<text x="0.0" y="95.1" stroke="none" data-name="ConfigurationManager" data-compartment="1">-syncInterval?: Timeout</text>
+<text x="0.0" y="111.3" stroke="none" data-name="ConfigurationManager" data-compartment="1">-flowControlManagerUrl: string</text>
+<text x="0.0" y="127.5" stroke="none" data-name="ConfigurationManager" data-compartment="1">-onConfigUpdate: (config: Configuration) =&gt; void</text>
+
+</g>
+</g>
+<g transform="translate(2649, 242.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="ConfigurationManager" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="ConfigurationManager" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="ConfigurationManager" data-compartment="2">+initialize(): Promise&lt;void&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="ConfigurationManager" data-compartment="2">-loadLocalConfig(): void</text>
+<text x="0.0" y="46.5" stroke="none" data-name="ConfigurationManager" data-compartment="2">-saveLocalConfig(): void</text>
+<text x="0.0" y="62.7" stroke="none" data-name="ConfigurationManager" data-compartment="2">+syncConfiguration(): Promise&lt;boolean&gt;</text>
+<text x="0.0" y="78.9" stroke="none" data-name="ConfigurationManager" data-compartment="2">-enterSlowMode(): void</text>
+<text x="0.0" y="95.1" stroke="none" data-name="ConfigurationManager" data-compartment="2">-startPeriodicSync(): void</text>
+<text x="0.0" y="111.3" stroke="none" data-name="ConfigurationManager" data-compartment="2">+getConfiguration(): Configuration</text>
+<text x="0.0" y="127.5" stroke="none" data-name="ConfigurationManager" data-compartment="2">+stop(): void</text>
+
+</g>
+</g>
+</g>
+<g data-name="FlowControl">
+<g fill="#eee8d5" stroke="#33322E" data-name="FlowControl">
+<rect x="3088.0" y="97.5" height="258.0" width="352.0" data-name="FlowControl"></rect>
+<path d="M3088.0 129.5 L3440.0 129.5" fill="none" data-name="FlowControl"></path>
+<path d="M3088.0 226.5 L3440.0 226.5" fill="none" data-name="FlowControl"></path>
+</g>
+<g transform="translate(3088, 97.5)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="FlowControl" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="FlowControl" data-compartment="0">
+<a id="src\core\flowControl.ts.FlowControl" xlink:href="src\core\flowControl.ts"><text x="168.0" y="14.1" stroke="none" text-anchor="middle" data-name="FlowControl" data-compartment="0">FlowControl</text></a>
+
+</g>
+</g>
+<g transform="translate(3088, 129.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="FlowControl" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="FlowControl" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="FlowControl" data-compartment="1">-logger: Logger</text>
+<text x="0.0" y="30.3" stroke="none" data-name="FlowControl" data-compartment="1">-linkQualities: Map&lt;LinkType, LinkQuality&gt;</text>
+<text x="0.0" y="46.5" stroke="none" data-name="FlowControl" data-compartment="1">-selectedLink: LinkType</text>
+<text x="0.0" y="62.7" stroke="none" data-name="FlowControl" data-compartment="1">-schedulerMode: SchedulerMode</text>
+<text x="0.0" y="78.9" stroke="none" data-name="FlowControl" data-compartment="1">-sender: Sender</text>
+
+</g>
+</g>
+<g transform="translate(3088, 226.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="FlowControl" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="FlowControl" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="FlowControl" data-compartment="2">+updateLinkQualities(): Promise&lt;void&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="FlowControl" data-compartment="2">-selectBestLink(): void</text>
+<text x="0.0" y="46.5" stroke="none" data-name="FlowControl" data-compartment="2">+getSelectedLink(): LinkType</text>
+<text x="0.0" y="62.7" stroke="none" data-name="FlowControl" data-compartment="2">+setSelectedLink(): void</text>
+<text x="0.0" y="78.9" stroke="none" data-name="FlowControl" data-compartment="2">+getSchedulerMode(): SchedulerMode</text>
+<text x="0.0" y="95.1" stroke="none" data-name="FlowControl" data-compartment="2">+setSchedulerMode(): void</text>
+<text x="0.0" y="111.3" stroke="none" data-name="FlowControl" data-compartment="2">+getLinkQualities(): LinkQuality[]</text>
+
+</g>
+</g>
+</g>
+<g data-name="Receiver">
+<g fill="#eee8d5" stroke="#33322E" data-name="Receiver">
+<rect x="3480.0" y="162.5" height="128.0" width="392.0" data-name="Receiver"></rect>
+<path d="M3480.0 194.5 L3872.0 194.5" fill="none" data-name="Receiver"></path>
+<path d="M3480.0 242.5 L3872.0 242.5" fill="none" data-name="Receiver"></path>
+</g>
+<g transform="translate(3480, 162.5)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="Receiver" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="Receiver" data-compartment="0">
+<a id="src\core\receiver.ts.Receiver" xlink:href="src\core\receiver.ts"><text x="188.0" y="14.1" stroke="none" text-anchor="middle" data-name="Receiver" data-compartment="0">Receiver</text></a>
+
+</g>
+</g>
+<g transform="translate(3480, 194.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Receiver" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="Receiver" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="Receiver" data-compartment="1">-logger: Logger</text>
+<text x="0.0" y="30.3" stroke="none" data-name="Receiver" data-compartment="1">-onValidMessage: (message: Message) =&gt; void</text>
+
+</g>
+</g>
+<g transform="translate(3480, 242.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Receiver" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="Receiver" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="Receiver" data-compartment="2">+receiveMessage(): boolean</text>
+<text x="0.0" y="30.3" stroke="none" data-name="Receiver" data-compartment="2">-validateMessage(): boolean</text>
+
+</g>
+</g>
+</g>
+<g data-name="SchedulerBase">
+<g fill="#eee8d5" stroke="#33322E" data-name="SchedulerBase">
+<rect x="3912.0" y="146.0" height="161.0" width="357.0" data-name="SchedulerBase"></rect>
+<path d="M3912.0 178.0 L4269.0 178.0" fill="none" data-name="SchedulerBase"></path>
+<path d="M3912.0 259.0 L4269.0 259.0" fill="none" data-name="SchedulerBase"></path>
+</g>
+<g transform="translate(3912, 146)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="SchedulerBase" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="SchedulerBase" data-compartment="0">
+<a id="src\core\scheduler.ts.SchedulerBase" xlink:href="src\core\scheduler.ts"><text x="170.5" y="14.1" stroke="none" text-anchor="middle" data-name="SchedulerBase" data-compartment="0">SchedulerBase</text></a>
+
+</g>
+</g>
+<g transform="translate(3912, 178)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="SchedulerBase" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="SchedulerBase" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="SchedulerBase" data-compartment="1">#logger: Logger</text>
+<text x="0.0" y="30.3" stroke="none" data-name="SchedulerBase" data-compartment="1">#running: boolean</text>
+<text x="0.0" y="46.5" stroke="none" data-name="SchedulerBase" data-compartment="1">#cache: Cache</text>
+<text x="0.0" y="62.7" stroke="none" data-name="SchedulerBase" data-compartment="1">#onMessage: (message: Message) =&gt; void</text>
+
+</g>
+</g>
+<g transform="translate(3912, 259)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="SchedulerBase" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="SchedulerBase" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="SchedulerBase" data-compartment="2">+abstract start(): void</text>
+<text x="0.0" y="30.3" stroke="none" data-name="SchedulerBase" data-compartment="2">+abstract stop(): void</text>
+
+</g>
+</g>
+</g>
+<g data-name="ContinuousScheduler">
+<g fill="#eee8d5" stroke="#33322E" data-name="ContinuousScheduler">
+<rect x="2468.8" y="501.0" height="129.0" width="221.0" data-name="ContinuousScheduler"></rect>
+<path d="M2468.8 533.0 L2689.8 533.0" fill="none" data-name="ContinuousScheduler"></path>
+<path d="M2468.8 565.0 L2689.8 565.0" fill="none" data-name="ContinuousScheduler"></path>
+</g>
+<g transform="translate(2468.75, 501)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="ContinuousScheduler" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="ContinuousScheduler" data-compartment="0">
+<a id="src\core\scheduler.ts.ContinuousScheduler" xlink:href="src\core\scheduler.ts"><text x="102.5" y="14.1" stroke="none" text-anchor="middle" data-name="ContinuousScheduler" data-compartment="0">ContinuousScheduler</text></a>
+
+</g>
+</g>
+<g transform="translate(2468.75, 533)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="ContinuousScheduler" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="ContinuousScheduler" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="ContinuousScheduler" data-compartment="1">-intervalId?: Timeout</text>
+
+</g>
+</g>
+<g transform="translate(2468.75, 565)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="ContinuousScheduler" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="ContinuousScheduler" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="ContinuousScheduler" data-compartment="2">+start(): void</text>
+<text x="0.0" y="30.3" stroke="none" data-name="ContinuousScheduler" data-compartment="2">+stop(): void</text>
+<text x="0.0" y="46.5" stroke="none" data-name="ContinuousScheduler" data-compartment="2">-processMessages(): void</text>
+
+</g>
+</g>
+</g>
+<g data-name="IntervalScheduler">
+<g fill="#eee8d5" stroke="#33322E" data-name="IntervalScheduler">
+<rect x="4119.5" y="493.0" height="145.0" width="185.0" data-name="IntervalScheduler"></rect>
+<path d="M4119.5 525.0 L4304.5 525.0" fill="none" data-name="IntervalScheduler"></path>
+<path d="M4119.5 573.0 L4304.5 573.0" fill="none" data-name="IntervalScheduler"></path>
+</g>
+<g transform="translate(4119.5, 493)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="IntervalScheduler" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="IntervalScheduler" data-compartment="0">
+<a id="src\core\scheduler.ts.IntervalScheduler" xlink:href="src\core\scheduler.ts"><text x="84.5" y="14.1" stroke="none" text-anchor="middle" data-name="IntervalScheduler" data-compartment="0">IntervalScheduler</text></a>
+
+</g>
+</g>
+<g transform="translate(4119.5, 525)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="IntervalScheduler" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="IntervalScheduler" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="IntervalScheduler" data-compartment="1">-intervalId?: Timeout</text>
+<text x="0.0" y="30.3" stroke="none" data-name="IntervalScheduler" data-compartment="1">-intervalMs: number</text>
+
+</g>
+</g>
+<g transform="translate(4119.5, 573)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="IntervalScheduler" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="IntervalScheduler" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="IntervalScheduler" data-compartment="2">+start(): void</text>
+<text x="0.0" y="30.3" stroke="none" data-name="IntervalScheduler" data-compartment="2">+stop(): void</text>
+<text x="0.0" y="46.5" stroke="none" data-name="IntervalScheduler" data-compartment="2">-processBatch(): void</text>
+
+</g>
+</g>
+</g>
+<g data-name="SchedulerFactory">
+<g fill="#eee8d5" stroke="#33322E" data-name="SchedulerFactory">
+<rect x="4309.0" y="190.5" height="72.0" width="265.0" data-name="SchedulerFactory"></rect>
+<path d="M4309.0 222.5 L4574.0 222.5" fill="none" data-name="SchedulerFactory"></path>
+<path d="M4309.0 230.5 L4574.0 230.5" fill="none" data-name="SchedulerFactory"></path>
+</g>
+<g transform="translate(4309, 190.5)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="SchedulerFactory" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="SchedulerFactory" data-compartment="0">
+<a id="src\core\scheduler.ts.SchedulerFactory" xlink:href="src\core\scheduler.ts"><text x="124.5" y="14.1" stroke="none" text-anchor="middle" data-name="SchedulerFactory" data-compartment="0">SchedulerFactory</text></a>
+
+</g>
+</g>
+<g transform="translate(4309, 222.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="SchedulerFactory" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" data-name="SchedulerFactory" data-compartment="1">
+
+</g>
+</g>
+<g transform="translate(4309, 230.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="SchedulerFactory" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="SchedulerFactory" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="SchedulerFactory" data-compartment="2">+static create(): SchedulerBase</text>
+
+</g>
+</g>
+</g>
+<g data-name="Sender">
+<g fill="#eee8d5" stroke="#33322E" data-name="Sender">
+<rect x="4614.0" y="145.5" height="162.0" width="333.0" data-name="Sender"></rect>
+<path d="M4614.0 177.5 L4947.0 177.5" fill="none" data-name="Sender"></path>
+<path d="M4614.0 242.5 L4947.0 242.5" fill="none" data-name="Sender"></path>
+</g>
+<g transform="translate(4614, 145.5)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="Sender" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="Sender" data-compartment="0">
+<a id="src\core\sender.ts.Sender" xlink:href="src\core\sender.ts"><text x="158.5" y="14.1" stroke="none" text-anchor="middle" data-name="Sender" data-compartment="0">Sender</text></a>
+
+</g>
+</g>
+<g transform="translate(4614, 177.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Sender" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="Sender" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="Sender" data-compartment="1">-logger: Logger</text>
+<text x="0.0" y="30.3" stroke="none" data-name="Sender" data-compartment="1">-adapters: Map&lt;LinkType, LinkAdapter&gt;</text>
+<text x="0.0" y="46.5" stroke="none" data-name="Sender" data-compartment="1">-proxyServerUrl: string</text>
+
+</g>
+</g>
+<g transform="translate(4614, 242.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Sender" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="Sender" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="Sender" data-compartment="2">+sendMessage(): Promise&lt;void&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="Sender" data-compartment="2">+getAvailableLinks(): LinkType[]</text>
+<text x="0.0" y="46.5" stroke="none" data-name="Sender" data-compartment="2">+getLinkQuality(): Promise&lt;LinkQuality&gt;</text>
+
+</g>
+</g>
+</g>
+<g data-name="DiscoveryService">
+<g fill="#eee8d5" stroke="#33322E" data-name="DiscoveryService">
+<rect x="4987.0" y="73.0" height="307.0" width="603.0" data-name="DiscoveryService"></rect>
+<path d="M4987.0 105.0 L5590.0 105.0" fill="none" data-name="DiscoveryService"></path>
+<path d="M4987.0 251.0 L5590.0 251.0" fill="none" data-name="DiscoveryService"></path>
+</g>
+<g transform="translate(4987, 73)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="DiscoveryService" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="DiscoveryService" data-compartment="0">
+<a id="src\discover\discoveryService.ts.DiscoveryService" xlink:href="src\discover\discoveryService.ts"><text x="293.5" y="14.1" stroke="none" text-anchor="middle" data-name="DiscoveryService" data-compartment="0">DiscoveryService</text></a>
+
+</g>
+</g>
+<g transform="translate(4987, 105)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="DiscoveryService" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="DiscoveryService" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="DiscoveryService" data-compartment="1">-logger: Logger</text>
+<text x="0.0" y="30.3" stroke="none" data-name="DiscoveryService" data-compartment="1">-lanSocket?: Socket</text>
+<text x="0.0" y="46.5" stroke="none" data-name="DiscoveryService" data-compartment="1">-wanSocket?: Socket</text>
+<text x="0.0" y="62.7" stroke="none" data-name="DiscoveryService" data-compartment="1">-lanPort: 8888</text>
+<text x="0.0" y="78.9" stroke="none" data-name="DiscoveryService" data-compartment="1">-wanPort: 8889</text>
+<text x="0.0" y="95.1" stroke="none" data-name="DiscoveryService" data-compartment="1">-multicastAddress: &quot;224.0.0.1&quot;</text>
+<text x="0.0" y="111.3" stroke="none" data-name="DiscoveryService" data-compartment="1">-agentId: string</text>
+<text x="0.0" y="127.5" stroke="none" data-name="DiscoveryService" data-compartment="1">-onDiscovery: (message: DiscoveryMessage, remote: RemoteInfo) =&gt; void</text>
+
+</g>
+</g>
+<g transform="translate(4987, 251)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="DiscoveryService" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="DiscoveryService" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="DiscoveryService" data-compartment="2">+start(): void</text>
+<text x="0.0" y="30.3" stroke="none" data-name="DiscoveryService" data-compartment="2">+stop(): void</text>
+<text x="0.0" y="46.5" stroke="none" data-name="DiscoveryService" data-compartment="2">-startLanDiscovery(): void</text>
+<text x="0.0" y="62.7" stroke="none" data-name="DiscoveryService" data-compartment="2">-startWanDiscovery(): void</text>
+<text x="0.0" y="78.9" stroke="none" data-name="DiscoveryService" data-compartment="2">+sendLanBroadcast(): void</text>
+<text x="0.0" y="95.1" stroke="none" data-name="DiscoveryService" data-compartment="2">+sendWanMulticast(): void</text>
+<text x="0.0" y="111.3" stroke="none" data-name="DiscoveryService" data-compartment="2">+announcePresence(): void</text>
+
+</g>
+</g>
+</g>
+<g data-name="DiscoveryMessage">
+<g fill="lightblue" stroke="#33322E" data-name="DiscoveryMessage">
+<rect x="5630.0" y="166.0" height="121.0" width="255.0" data-name="DiscoveryMessage"></rect>
+<path d="M5630.0 198.0 L5885.0 198.0" fill="none" data-name="DiscoveryMessage"></path>
+<path d="M5630.0 279.0 L5885.0 279.0" fill="none" data-name="DiscoveryMessage"></path>
+</g>
+<g transform="translate(5630, 166)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="DiscoveryMessage" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="DiscoveryMessage" data-compartment="0">
+<a id="src\discover\discoveryService.ts.DiscoveryMessage" xlink:href="src\discover\discoveryService.ts"><text x="119.5" y="14.1" stroke="none" text-anchor="middle" data-name="DiscoveryMessage" data-compartment="0">DiscoveryMessage</text></a>
+
+</g>
+</g>
+<g transform="translate(5630, 198)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="DiscoveryMessage" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="DiscoveryMessage" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="DiscoveryMessage" data-compartment="1">+type: &quot;discover&quot; | &quot;announce&quot;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="DiscoveryMessage" data-compartment="1">+agentId: string</text>
+<text x="0.0" y="46.5" stroke="none" data-name="DiscoveryMessage" data-compartment="1">+timestamp: number</text>
+<text x="0.0" y="62.7" stroke="none" data-name="DiscoveryMessage" data-compartment="1">+data?: any</text>
+
+</g>
+</g>
+<g transform="translate(5630, 279)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="DiscoveryMessage" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" data-name="DiscoveryMessage" data-compartment="2">
+
+</g>
+</g>
+</g>
+<g data-name="FlowControlManager">
+<g fill="#eee8d5" stroke="#33322E" data-name="FlowControlManager">
+<rect x="5925.0" y="121.5" height="210.0" width="326.0" data-name="FlowControlManager"></rect>
+<path d="M5925.0 153.5 L6251.0 153.5" fill="none" data-name="FlowControlManager"></path>
+<path d="M5925.0 250.5 L6251.0 250.5" fill="none" data-name="FlowControlManager"></path>
+</g>
+<g transform="translate(5925, 121.5)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="FlowControlManager" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="FlowControlManager" data-compartment="0">
+<a id="src\manager\flowControlManager.ts.FlowControlManager" xlink:href="src\manager\flowControlManager.ts"><text x="155.0" y="14.1" stroke="none" text-anchor="middle" data-name="FlowControlManager" data-compartment="0">FlowControlManager</text></a>
+
+</g>
+</g>
+<g transform="translate(5925, 153.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="FlowControlManager" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="FlowControlManager" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="FlowControlManager" data-compartment="1">-app: any</text>
+<text x="0.0" y="30.3" stroke="none" data-name="FlowControlManager" data-compartment="1">-logger: Logger</text>
+<text x="0.0" y="46.5" stroke="none" data-name="FlowControlManager" data-compartment="1">-agents: Map&lt;string, RegisteredAgent&gt;</text>
+<text x="0.0" y="62.7" stroke="none" data-name="FlowControlManager" data-compartment="1">-defaultConfiguration: Configuration</text>
+<text x="0.0" y="78.9" stroke="none" data-name="FlowControlManager" data-compartment="1">-port: number</text>
+
+</g>
+</g>
+<g transform="translate(5925, 250.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="FlowControlManager" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="FlowControlManager" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="FlowControlManager" data-compartment="2">-setupMiddleware(): void</text>
+<text x="0.0" y="30.3" stroke="none" data-name="FlowControlManager" data-compartment="2">-setupRoutes(): void</text>
+<text x="0.0" y="46.5" stroke="none" data-name="FlowControlManager" data-compartment="2">+start(): Promise&lt;void&gt;</text>
+<text x="0.0" y="62.7" stroke="none" data-name="FlowControlManager" data-compartment="2">-startAgentCleanup(): void</text>
+
+</g>
+</g>
+</g>
+<g data-name="RegisteredAgent">
+<g fill="lightblue" stroke="#33322E" data-name="RegisteredAgent">
+<rect x="6291.0" y="166.0" height="121.0" width="245.0" data-name="RegisteredAgent"></rect>
+<path d="M6291.0 198.0 L6536.0 198.0" fill="none" data-name="RegisteredAgent"></path>
+<path d="M6291.0 279.0 L6536.0 279.0" fill="none" data-name="RegisteredAgent"></path>
+</g>
+<g transform="translate(6291, 166)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="RegisteredAgent" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="RegisteredAgent" data-compartment="0">
+<a id="src\manager\flowControlManager.ts.RegisteredAgent" xlink:href="src\manager\flowControlManager.ts"><text x="114.5" y="14.1" stroke="none" text-anchor="middle" data-name="RegisteredAgent" data-compartment="0">RegisteredAgent</text></a>
+
+</g>
+</g>
+<g transform="translate(6291, 198)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="RegisteredAgent" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="RegisteredAgent" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="RegisteredAgent" data-compartment="1">+id: string</text>
+<text x="0.0" y="30.3" stroke="none" data-name="RegisteredAgent" data-compartment="1">+lastSeen: number</text>
+<text x="0.0" y="46.5" stroke="none" data-name="RegisteredAgent" data-compartment="1">+status: AgentStatus</text>
+<text x="0.0" y="62.7" stroke="none" data-name="RegisteredAgent" data-compartment="1">+configuration: Configuration</text>
+
+</g>
+</g>
+<g transform="translate(6291, 279)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="RegisteredAgent" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" data-name="RegisteredAgent" data-compartment="2">
+
+</g>
+</g>
+</g>
+<g data-name="ProxyServer">
+<g fill="#eee8d5" stroke="#33322E" data-name="ProxyServer">
+<rect x="6576.0" y="113.5" height="226.0" width="305.0" data-name="ProxyServer"></rect>
+<path d="M6576.0 145.5 L6881.0 145.5" fill="none" data-name="ProxyServer"></path>
+<path d="M6576.0 258.5 L6881.0 258.5" fill="none" data-name="ProxyServer"></path>
+</g>
+<g transform="translate(6576, 113.5)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="ProxyServer" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="ProxyServer" data-compartment="0">
+<a id="src\proxy\proxyServer.ts.ProxyServer" xlink:href="src\proxy\proxyServer.ts"><text x="144.5" y="14.1" stroke="none" text-anchor="middle" data-name="ProxyServer" data-compartment="0">ProxyServer</text></a>
+
+</g>
+</g>
+<g transform="translate(6576, 145.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="ProxyServer" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="ProxyServer" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="ProxyServer" data-compartment="1">-app: any</text>
+<text x="0.0" y="30.3" stroke="none" data-name="ProxyServer" data-compartment="1">-wss: WebSocketServer</text>
+<text x="0.0" y="46.5" stroke="none" data-name="ProxyServer" data-compartment="1">-logger: Logger</text>
+<text x="0.0" y="62.7" stroke="none" data-name="ProxyServer" data-compartment="1">-connectedClients: Set&lt;WebSocket&gt;</text>
+<text x="0.0" y="78.9" stroke="none" data-name="ProxyServer" data-compartment="1">-httpPort: number</text>
+<text x="0.0" y="95.1" stroke="none" data-name="ProxyServer" data-compartment="1">-wsPort: number</text>
+
+</g>
+</g>
+<g transform="translate(6576, 258.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="ProxyServer" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="ProxyServer" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="ProxyServer" data-compartment="2">-setupHttpServer(): void</text>
+<text x="0.0" y="30.3" stroke="none" data-name="ProxyServer" data-compartment="2">-setupWebSocketServer(): void</text>
+<text x="0.0" y="46.5" stroke="none" data-name="ProxyServer" data-compartment="2">-broadcastMessage(): void</text>
+<text x="0.0" y="62.7" stroke="none" data-name="ProxyServer" data-compartment="2">+start(): Promise&lt;void&gt;</text>
+
+</g>
+</g>
+</g>
+<g data-name="Message">
+<g fill="lightblue" stroke="#33322E" data-name="Message">
+<rect x="6921.0" y="150.0" height="153.0" width="217.0" data-name="Message"></rect>
+<path d="M6921.0 182.0 L7138.0 182.0" fill="none" data-name="Message"></path>
+<path d="M6921.0 295.0 L7138.0 295.0" fill="none" data-name="Message"></path>
+</g>
+<g transform="translate(6921, 150)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Message" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="Message" data-compartment="0">
+<a id="src\types\index.ts.Message" xlink:href="src\types\index.ts"><text x="100.5" y="14.1" stroke="none" text-anchor="middle" data-name="Message" data-compartment="0">Message</text></a>
+
+</g>
+</g>
+<g transform="translate(6921, 182)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Message" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="Message" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="Message" data-compartment="1">+id: string</text>
+<text x="0.0" y="30.3" stroke="none" data-name="Message" data-compartment="1">+content: string</text>
+<text x="0.0" y="46.5" stroke="none" data-name="Message" data-compartment="1">+priority: MessagePriority</text>
+<text x="0.0" y="62.7" stroke="none" data-name="Message" data-compartment="1">+timestamp: number</text>
+<text x="0.0" y="78.9" stroke="none" data-name="Message" data-compartment="1">+retries: number</text>
+<text x="0.0" y="95.1" stroke="none" data-name="Message" data-compartment="1">+maxRetries: number</text>
+
+</g>
+</g>
+<g transform="translate(6921, 295)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Message" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" data-name="Message" data-compartment="2">
+
+</g>
+</g>
+</g>
+<g data-name="LinkQuality">
+<g fill="lightblue" stroke="#33322E" data-name="LinkQuality">
+<rect x="7178.0" y="150.0" height="153.0" width="177.0" data-name="LinkQuality"></rect>
+<path d="M7178.0 182.0 L7355.0 182.0" fill="none" data-name="LinkQuality"></path>
+<path d="M7178.0 295.0 L7355.0 295.0" fill="none" data-name="LinkQuality"></path>
+</g>
+<g transform="translate(7178, 150)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="LinkQuality" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="LinkQuality" data-compartment="0">
+<a id="src\types\index.ts.LinkQuality" xlink:href="src\types\index.ts"><text x="80.5" y="14.1" stroke="none" text-anchor="middle" data-name="LinkQuality" data-compartment="0">LinkQuality</text></a>
+
+</g>
+</g>
+<g transform="translate(7178, 182)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="LinkQuality" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="LinkQuality" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="LinkQuality" data-compartment="1">+type: LinkType</text>
+<text x="0.0" y="30.3" stroke="none" data-name="LinkQuality" data-compartment="1">+available: boolean</text>
+<text x="0.0" y="46.5" stroke="none" data-name="LinkQuality" data-compartment="1">+bandwidth: number</text>
+<text x="0.0" y="62.7" stroke="none" data-name="LinkQuality" data-compartment="1">+latency: number</text>
+<text x="0.0" y="78.9" stroke="none" data-name="LinkQuality" data-compartment="1">+reliability: number</text>
+<text x="0.0" y="95.1" stroke="none" data-name="LinkQuality" data-compartment="1">+timestamp: number</text>
+
+</g>
+</g>
+<g transform="translate(7178, 295)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="LinkQuality" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" data-name="LinkQuality" data-compartment="2">
+
+</g>
+</g>
+</g>
+<g data-name="Configuration">
+<g fill="lightblue" stroke="#33322E" data-name="Configuration">
+<rect x="7395.0" y="150.0" height="153.0" width="282.0" data-name="Configuration"></rect>
+<path d="M7395.0 182.0 L7677.0 182.0" fill="none" data-name="Configuration"></path>
+<path d="M7395.0 295.0 L7677.0 295.0" fill="none" data-name="Configuration"></path>
+</g>
+<g transform="translate(7395, 150)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Configuration" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="Configuration" data-compartment="0">
+<a id="src\types\index.ts.Configuration" xlink:href="src\types\index.ts"><text x="133.0" y="14.1" stroke="none" text-anchor="middle" data-name="Configuration" data-compartment="0">Configuration</text></a>
+
+</g>
+</g>
+<g transform="translate(7395, 182)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Configuration" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="Configuration" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="Configuration" data-compartment="1">+schedulerMode: SchedulerMode</text>
+<text x="0.0" y="30.3" stroke="none" data-name="Configuration" data-compartment="1">+selectedLink: LinkType</text>
+<text x="0.0" y="46.5" stroke="none" data-name="Configuration" data-compartment="1">+intervalMs: number</text>
+<text x="0.0" y="62.7" stroke="none" data-name="Configuration" data-compartment="1">+maxRetries: number</text>
+<text x="0.0" y="78.9" stroke="none" data-name="Configuration" data-compartment="1">+proxyServerUrl: string</text>
+<text x="0.0" y="95.1" stroke="none" data-name="Configuration" data-compartment="1">+token: string</text>
+
+</g>
+</g>
+<g transform="translate(7395, 295)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Configuration" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" data-name="Configuration" data-compartment="2">
+
+</g>
+</g>
+</g>
+<g data-name="AgentStatus">
+<g fill="lightblue" stroke="#33322E" data-name="AgentStatus">
+<rect x="7717.0" y="142.0" height="169.0" width="293.0" data-name="AgentStatus"></rect>
+<path d="M7717.0 174.0 L8010.0 174.0" fill="none" data-name="AgentStatus"></path>
+<path d="M7717.0 303.0 L8010.0 303.0" fill="none" data-name="AgentStatus"></path>
+</g>
+<g transform="translate(7717, 142)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="AgentStatus" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="AgentStatus" data-compartment="0">
+<a id="src\types\index.ts.AgentStatus" xlink:href="src\types\index.ts"><text x="138.5" y="14.1" stroke="none" text-anchor="middle" data-name="AgentStatus" data-compartment="0">AgentStatus</text></a>
+
+</g>
+</g>
+<g transform="translate(7717, 174)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="AgentStatus" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="AgentStatus" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="AgentStatus" data-compartment="1">+id: string</text>
+<text x="0.0" y="30.3" stroke="none" data-name="AgentStatus" data-compartment="1">+status: &quot;active&quot; | &quot;inactive&quot; | &quot;slow&quot;</text>
+<text x="0.0" y="46.5" stroke="none" data-name="AgentStatus" data-compartment="1">+selectedLink: LinkType</text>
+<text x="0.0" y="62.7" stroke="none" data-name="AgentStatus" data-compartment="1">+schedulerMode: SchedulerMode</text>
+<text x="0.0" y="78.9" stroke="none" data-name="AgentStatus" data-compartment="1">+messagesInQueue: number</text>
+<text x="0.0" y="95.1" stroke="none" data-name="AgentStatus" data-compartment="1">+linkQualities: LinkQuality[]</text>
+<text x="0.0" y="111.3" stroke="none" data-name="AgentStatus" data-compartment="1">+timestamp: number</text>
+
+</g>
+</g>
+<g transform="translate(7717, 303)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="AgentStatus" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" data-name="AgentStatus" data-compartment="2">
+
+</g>
+</g>
+</g>
+<g data-name="MessagePriority">
+<g fill="lightgreen" stroke="#33322E" data-name="MessagePriority">
+<rect x="8050.0" y="170.0" height="113.0" width="143.0" data-name="MessagePriority"></rect>
+<path d="M8050.0 202.0 L8193.0 202.0" fill="none" data-name="MessagePriority"></path>
+</g>
+<g transform="translate(8050, 170)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="MessagePriority" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="MessagePriority" data-compartment="0">
+<a id="src\types\index.ts.MessagePriority" xlink:href="src\types\index.ts"><text x="63.5" y="14.1" stroke="none" text-anchor="middle" data-name="MessagePriority" data-compartment="0">MessagePriority</text></a>
+
+</g>
+</g>
+<g transform="translate(8050, 202)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="MessagePriority" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="MessagePriority" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="MessagePriority" data-compartment="1">LOW</text>
+<text x="0.0" y="30.3" stroke="none" data-name="MessagePriority" data-compartment="1">MEDIUM</text>
+<text x="0.0" y="46.5" stroke="none" data-name="MessagePriority" data-compartment="1">HIGH</text>
+<text x="0.0" y="62.7" stroke="none" data-name="MessagePriority" data-compartment="1">CRITICAL</text>
+
+</g>
+</g>
+</g>
+<g data-name="LinkType">
+<g fill="lightgreen" stroke="#33322E" data-name="LinkType">
+<rect x="8233.0" y="178.0" height="97.0" width="88.0" data-name="LinkType"></rect>
+<path d="M8233.0 210.0 L8321.0 210.0" fill="none" data-name="LinkType"></path>
+</g>
+<g transform="translate(8233, 178)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="LinkType" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="LinkType" data-compartment="0">
+<a id="src\types\index.ts.LinkType" xlink:href="src\types\index.ts"><text x="36.0" y="14.1" stroke="none" text-anchor="middle" data-name="LinkType" data-compartment="0">LinkType</text></a>
+
+</g>
+</g>
+<g transform="translate(8233, 210)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="LinkType" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="LinkType" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="LinkType" data-compartment="1">LAN</text>
+<text x="0.0" y="30.3" stroke="none" data-name="LinkType" data-compartment="1">WIFI</text>
+<text x="0.0" y="46.5" stroke="none" data-name="LinkType" data-compartment="1">MOBILE</text>
+
+</g>
+</g>
+</g>
+<g data-name="SchedulerMode">
+<g fill="lightgreen" stroke="#33322E" data-name="SchedulerMode">
+<rect x="8361.0" y="186.5" height="80.0" width="140.0" data-name="SchedulerMode"></rect>
+<path d="M8361.0 218.5 L8501.0 218.5" fill="none" data-name="SchedulerMode"></path>
+</g>
+<g transform="translate(8361, 186.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="SchedulerMode" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="SchedulerMode" data-compartment="0">
+<a id="src\types\index.ts.SchedulerMode" xlink:href="src\types\index.ts"><text x="62.0" y="14.1" stroke="none" text-anchor="middle" data-name="SchedulerMode" data-compartment="0">SchedulerMode</text></a>
+
+</g>
+</g>
+<g transform="translate(8361, 218.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="SchedulerMode" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="SchedulerMode" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="SchedulerMode" data-compartment="1">CONTINUOUS</text>
+<text x="0.0" y="30.3" stroke="none" data-name="SchedulerMode" data-compartment="1">INTERVAL</text>
+
+</g>
+</g>
+</g>
+<g data-name="CircuitBreaker">
+<g fill="#eee8d5" stroke="#33322E" data-name="CircuitBreaker">
+<rect x="8541.0" y="129.5" height="194.0" width="353.0" data-name="CircuitBreaker"></rect>
+<path d="M8541.0 161.5 L8894.0 161.5" fill="none" data-name="CircuitBreaker"></path>
+<path d="M8541.0 258.5 L8894.0 258.5" fill="none" data-name="CircuitBreaker"></path>
+</g>
+<g transform="translate(8541, 129.5)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="CircuitBreaker" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="CircuitBreaker" data-compartment="0">
+<a id="src\utils\circuitBreaker.ts.CircuitBreaker" xlink:href="src\utils\circuitBreaker.ts"><text x="168.5" y="14.1" stroke="none" text-anchor="middle" data-name="CircuitBreaker" data-compartment="0">CircuitBreaker</text></a>
+
+</g>
+</g>
+<g transform="translate(8541, 161.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="CircuitBreaker" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="CircuitBreaker" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="CircuitBreaker" data-compartment="1">-failures: number</text>
+<text x="0.0" y="30.3" stroke="none" data-name="CircuitBreaker" data-compartment="1">-lastFailureTime: number</text>
+<text x="0.0" y="46.5" stroke="none" data-name="CircuitBreaker" data-compartment="1">-state: &quot;CLOSED&quot; | &quot;OPEN&quot; | &quot;HALF_OPEN&quot;</text>
+<text x="0.0" y="62.7" stroke="none" data-name="CircuitBreaker" data-compartment="1">-threshold: number</text>
+<text x="0.0" y="78.9" stroke="none" data-name="CircuitBreaker" data-compartment="1">-timeout: number</text>
+
+</g>
+</g>
+<g transform="translate(8541, 258.5)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="CircuitBreaker" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="CircuitBreaker" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="CircuitBreaker" data-compartment="2">+execute(): Promise&lt;T&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="CircuitBreaker" data-compartment="2">-onSuccess(): void</text>
+<text x="0.0" y="46.5" stroke="none" data-name="CircuitBreaker" data-compartment="2">-onFailure(): void</text>
+
+</g>
+</g>
+</g>
+<g data-name="Logger">
+<g fill="#eee8d5" stroke="#33322E" data-name="Logger">
+<rect x="8934.0" y="154.0" height="145.0" width="203.0" data-name="Logger"></rect>
+<path d="M8934.0 186.0 L9137.0 186.0" fill="none" data-name="Logger"></path>
+<path d="M8934.0 218.0 L9137.0 218.0" fill="none" data-name="Logger"></path>
+</g>
+<g transform="translate(8934, 154)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="Logger" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="Logger" data-compartment="0">
+<a id="src\utils\logger.ts.Logger" xlink:href="src\utils\logger.ts"><text x="93.5" y="14.1" stroke="none" text-anchor="middle" data-name="Logger" data-compartment="0">Logger</text></a>
+
+</g>
+</g>
+<g transform="translate(8934, 186)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Logger" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="Logger" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="Logger" data-compartment="1">-logger: winston.Logger</text>
+
+</g>
+</g>
+<g transform="translate(8934, 218)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="Logger" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="Logger" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="Logger" data-compartment="2">+info(): void</text>
+<text x="0.0" y="30.3" stroke="none" data-name="Logger" data-compartment="2">+error(): void</text>
+<text x="0.0" y="46.5" stroke="none" data-name="Logger" data-compartment="2">+warn(): void</text>
+<text x="0.0" y="62.7" stroke="none" data-name="Logger" data-compartment="2">+debug(): void</text>
+
+</g>
+</g>
+</g>
+<g data-name="RouteManager">
+<g fill="#eee8d5" stroke="#33322E" data-name="RouteManager">
+<rect x="9177.0" y="146.0" height="161.0" width="340.0" data-name="RouteManager"></rect>
+<path d="M9177.0 178.0 L9517.0 178.0" fill="none" data-name="RouteManager"></path>
+<path d="M9177.0 226.0 L9517.0 226.0" fill="none" data-name="RouteManager"></path>
+</g>
+<g transform="translate(9177, 146)" font-family="Helvetica" font-size="12pt" font-weight="bold" font-style="normal" data-name="RouteManager" data-compartment="0">
+<g transform="translate(8, 8)" fill="#33322E" text-align="center" data-name="RouteManager" data-compartment="0">
+<a id="src\utils\routeManager.ts.RouteManager" xlink:href="src\utils\routeManager.ts"><text x="162.0" y="14.1" stroke="none" text-anchor="middle" data-name="RouteManager" data-compartment="0">RouteManager</text></a>
+
+</g>
+</g>
+<g transform="translate(9177, 178)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="RouteManager" data-compartment="1">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="RouteManager" data-compartment="1">
+<text x="0.0" y="14.1" stroke="none" data-name="RouteManager" data-compartment="1">-logger: Logger</text>
+<text x="0.0" y="30.3" stroke="none" data-name="RouteManager" data-compartment="1">-currentRoutes: Map&lt;string, string&gt;</text>
+
+</g>
+</g>
+<g transform="translate(9177, 226)" font-family="Helvetica" font-size="12pt" font-weight="normal" font-style="normal" data-name="RouteManager" data-compartment="2">
+<g transform="translate(8, 8)" fill="#33322E" text-align="left" data-name="RouteManager" data-compartment="2">
+<text x="0.0" y="14.1" stroke="none" data-name="RouteManager" data-compartment="2">+setRoute(): Promise&lt;void&gt;</text>
+<text x="0.0" y="30.3" stroke="none" data-name="RouteManager" data-compartment="2">+removeRoute(): Promise&lt;void&gt;</text>
+<text x="0.0" y="46.5" stroke="none" data-name="RouteManager" data-compartment="2">+setDefaultRoute(): Promise&lt;void&gt;</text>
+<text x="0.0" y="62.7" stroke="none" data-name="RouteManager" data-compartment="2">+getCurrentRoutes(): Map&lt;string, string&gt;</text>
+
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</svg>
