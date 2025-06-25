@@ -1,0 +1,399 @@
+classDiagram
+    %% Enums and Interfaces
+    class MessagePriority {
+        <<enumeration>>
+        LOW = 1
+        MEDIUM = 2
+        HIGH = 3
+        CRITICAL = 4
+    }
+
+    class LinkType {
+        <<enumeration>>
+        LAN
+        WIFI
+        MOBILE
+    }
+
+    class SchedulerMode {
+        <<enumeration>>
+        CONTINUOUS
+        INTERVAL
+    }
+
+    class Message {
+        <<interface>>
+        +string id
+        +string content
+        +MessagePriority priority
+        +number timestamp
+        +number retries
+        +number maxRetries
+    }
+
+    class LinkQuality {
+        <<interface>>
+        +LinkType type
+        +boolean available
+        +number bandwidth
+        +number latency
+        +number reliability
+        +number timestamp
+    }
+
+    class Configuration {
+        <<interface>>
+        +SchedulerMode schedulerMode
+        +LinkType selectedLink
+        +number intervalMs
+        +number maxRetries
+        +string proxyServerUrl
+        +string token
+    }
+
+    class AgentStatus {
+        <<interface>>
+        +string id
+        +string status
+        +LinkType selectedLink
+        +SchedulerMode schedulerMode
+        +number messagesInQueue
+        +LinkQuality[] linkQualities
+        +number timestamp
+    }
+
+    %% Core Classes
+    class FlowControlAgent {
+        -string agentId
+        -ApiServer apiServer
+        -Receiver receiver
+        -Cache cache
+        -SchedulerBase scheduler
+        -Sender sender
+        -FlowControl flowControl
+        -ConfigurationManager configManager
+        -boolean running
+        +start() Promise~void~
+        +stop() Promise~void~
+        -handleApiMessage(message: Message) void
+        -handleValidMessage(message: Message) void
+        -handleScheduledMessage(message: Message) Promise~void~
+        -handleConfigUpdate(config: Configuration) void
+        -restartScheduler(config: Configuration) void
+        -startLinkMonitoring() void
+        -getStatus() AgentStatus
+    }
+
+    class ApiServer {
+        -express app
+        -Logger logger
+        -string token
+        -number port
+        -function onMessage
+        -function getStatus
+        +constructor(port, onMessage, getStatus, token?)
+        +start() Promise~void~
+        -generateToken() string
+        -setupMiddleware() void
+        -setupRoutes() void
+    }
+
+    class Receiver {
+        -Logger logger
+        -function onValidMessage
+        +constructor(onValidMessage)
+        +receiveMessage(message: Message) boolean
+        -validateMessage(message: Message) boolean
+    }
+
+    class Cache {
+        -Map~MessagePriority, Message[]~ messages
+        -Logger logger
+        +storeMessage(message: Message) void
+        +getNextMessage() Message | null
+        +getQueueSize() number
+        +getQueueSizeByPriority(priority: MessagePriority) number
+    }
+
+    %% Scheduler Classes
+    class SchedulerBase {
+        <<abstract>>
+        #Logger logger
+        #boolean running
+        #Cache cache
+        #function onMessage
+        +constructor(cache, onMessage)
+        +start()* void
+        +stop()* void
+    }
+
+    class ContinuousScheduler {
+        -NodeJS.Timeout intervalId
+        +start() void
+        +stop() void
+        -processMessages() void
+    }
+
+    class IntervalScheduler {
+        -NodeJS.Timeout intervalId
+        -number intervalMs
+        +constructor(cache, onMessage, intervalMs)
+        +start() void
+        +stop() void
+        -processBatch() void
+    }
+
+    class SchedulerFactory {
+        <<static>>
+        +create(mode: SchedulerMode, cache: Cache, onMessage, intervalMs?) SchedulerBase
+    }
+
+    class Sender {
+        -Logger logger
+        -Map~LinkType, LinkAdapter~ adapters
+        -string proxyServerUrl
+        +constructor(proxyServerUrl)
+        +sendMessage(message: Message, linkType: LinkType) Promise~void~
+        +getAvailableLinks() LinkType[]
+        +getLinkQuality(linkType: LinkType) Promise~LinkQuality~
+    }
+
+    class FlowControl {
+        -Logger logger
+        -Map~LinkType, LinkQuality~ linkQualities
+        -LinkType selectedLink
+        -SchedulerMode schedulerMode
+        -Sender sender
+        +constructor(sender)
+        +updateLinkQualities() Promise~void~
+        +getSelectedLink() LinkType
+        +setSelectedLink(link: LinkType) void
+        +getSchedulerMode() SchedulerMode
+        +setSchedulerMode(mode: SchedulerMode) void
+        +getLinkQualities() LinkQuality[]
+        -selectBestLink() void
+    }
+
+    %% Link Adapters
+    class LinkAdapter {
+        <<abstract>>
+        #Logger logger
+        #CircuitBreaker circuitBreaker
+        #LinkType linkType
+        +constructor(linkType)
+        +checkAvailability()* Promise~boolean~
+        +measureBandwidth()* Promise~number~
+        +measureLatency()* Promise~number~
+        +transmit(data, url)* Promise~void~
+        +getLinkQuality() Promise~LinkQuality~
+        -calculateReliability(available, latency) number
+    }
+
+    class LanAdapter {
+        +checkAvailability() Promise~boolean~
+        +measureBandwidth() Promise~number~
+        +measureLatency() Promise~number~
+        +transmit(data, url) Promise~void~
+    }
+
+    class WifiAdapter {
+        +checkAvailability() Promise~boolean~
+        +measureBandwidth() Promise~number~
+        +measureLatency() Promise~number~
+        +transmit(data, url) Promise~void~
+    }
+
+    class MobileAdapter {
+        +checkAvailability() Promise~boolean~
+        +measureBandwidth() Promise~number~
+        +measureLatency() Promise~number~
+        +transmit(data, url) Promise~void~
+    }
+
+    %% Configuration and Monitoring
+    class ConfigurationManager {
+        -Logger logger
+        -Configuration config
+        -number syncRetries
+        -number maxSyncRetries
+        -string configFilePath
+        -NodeJS.Timeout syncInterval
+        -string flowControlManagerUrl
+        -function onConfigUpdate
+        +constructor(flowControlManagerUrl, onConfigUpdate)
+        +initialize() Promise~void~
+        +syncConfiguration() Promise~boolean~
+        +getConfiguration() Configuration | null
+        +stop() void
+        -loadLocalConfig() void
+        -saveLocalConfig() void
+        -enterSlowMode() void
+        -startPeriodicSync() void
+    }
+
+    class MonitorAdapter {
+        -Logger logger
+        -string flowControlManagerUrl
+        -string agentId
+        +constructor(flowControlManagerUrl, agentId)
+        +sendMonitoringData(linkQualities: LinkQuality[]) Promise~void~
+        +performSpeedTest(linkType: LinkType) Promise~SpeedTestResult~
+        -measureLatency() Promise~number~
+        -getSystemMetrics() Promise~object~
+    }
+
+    class DiscoveryService {
+        -Logger logger
+        -dgram.Socket lanSocket
+        -dgram.Socket wanSocket
+        -number lanPort
+        -number wanPort
+        -string multicastAddress
+        -string agentId
+        -function onDiscovery
+        +constructor(agentId, onDiscovery)
+        +start() void
+        +stop() void
+        +sendLanBroadcast(message: DiscoveryMessage) void
+        +sendWanMulticast(message: DiscoveryMessage) void
+        +announcePresence() void
+        -startLanDiscovery() void
+        -startWanDiscovery() void
+    }
+
+    %% Utility Classes
+    class Logger {
+        -winston.Logger logger
+        +constructor(component: string)
+        +info(message: string, meta?) void
+        +error(message: string, error?, meta?) void
+        +warn(message: string, meta?) void
+        +debug(message: string, meta?) void
+    }
+
+    class CircuitBreaker {
+        -number failures
+        -number lastFailureTime
+        -string state
+        -number threshold
+        -number timeout
+        +constructor(threshold?, timeout?)
+        +execute~T~(operation: () => Promise~T~) Promise~T~
+        -onSuccess() void
+        -onFailure() void
+    }
+
+    class RouteManager {
+        -Logger logger
+        -Map~string, string~ currentRoutes
+        +setRoute(destination: string, gateway: string, linkType: LinkType) Promise~void~
+        +removeRoute(destination: string) Promise~void~
+        +setDefaultRoute(gateway: string, linkType: LinkType) Promise~void~
+        +getCurrentRoutes() Map~string, string~
+    }
+
+    %% Manager Classes
+    class FlowControlManager {
+        -express app
+        -Logger logger
+        -Map~string, RegisteredAgent~ agents
+        -Configuration defaultConfiguration
+        -number port
+        +constructor(port)
+        +start() Promise~void~
+        -setupMiddleware() void
+        -setupRoutes() void
+        -startAgentCleanup() void
+    }
+
+    class RegisteredAgent {
+        <<interface>>
+        +string id
+        +number lastSeen
+        +AgentStatus status
+        +Configuration configuration
+    }
+
+    %% Proxy Server
+    class ProxyServer {
+        -express app
+        -WebSocketServer wss
+        -Logger logger
+        -Set~WebSocket~ connectedClients
+        -number httpPort
+        -number wsPort
+        +constructor(httpPort, wsPort)
+        +start() Promise~void~
+        -setupHttpServer() void
+        -setupWebSocketServer() void
+        -broadcastMessage(message: Message) void
+    }
+
+    %% Relationships
+    FlowControlAgent --* ApiServer : contains
+    FlowControlAgent --* Receiver : contains
+    FlowControlAgent --* Cache : contains
+    FlowControlAgent --* SchedulerBase : contains
+    FlowControlAgent --* Sender : contains
+    FlowControlAgent --* FlowControl : contains
+    FlowControlAgent --* ConfigurationManager : contains
+    FlowControlAgent ..> Message : uses
+    FlowControlAgent ..> Configuration : uses
+    FlowControlAgent ..> AgentStatus : uses
+
+    SchedulerBase <|-- ContinuousScheduler : extends
+    SchedulerBase <|-- IntervalScheduler : extends
+    SchedulerFactory ..> SchedulerBase : creates
+    SchedulerBase ..> Cache : uses
+    SchedulerBase ..> Message : uses
+
+    Sender --* LinkAdapter : contains
+    Sender ..> LinkType : uses
+    Sender ..> LinkQuality : uses
+    Sender ..> Message : uses
+
+    LinkAdapter <|-- LanAdapter : extends
+    LinkAdapter <|-- WifiAdapter : extends
+    LinkAdapter <|-- MobileAdapter : extends
+    LinkAdapter --* CircuitBreaker : contains
+    LinkAdapter ..> LinkType : uses
+    LinkAdapter ..> LinkQuality : uses
+
+    FlowControl --* Sender : contains
+    FlowControl ..> LinkType : uses
+    FlowControl ..> LinkQuality : uses
+    FlowControl ..> SchedulerMode : uses
+
+    ConfigurationManager ..> Configuration : uses
+    MonitorAdapter ..> LinkQuality : uses
+    DiscoveryService ..> DiscoveryMessage : uses
+
+    Cache ..> Message : uses
+    Cache ..> MessagePriority : uses
+    Receiver ..> Message : uses
+    ApiServer ..> Message : uses
+    ApiServer ..> AgentStatus : uses
+
+    FlowControlManager ..> RegisteredAgent : uses
+    FlowControlManager ..> Configuration : uses
+    FlowControlManager ..> AgentStatus : uses
+
+    ProxyServer ..> Message : uses
+
+    %% Discovery Message Interface
+    class DiscoveryMessage {
+        <<interface>>
+        +string type
+        +string agentId
+        +number timestamp
+        +any data
+    }
+
+    %% Speed Test Result Interface
+    class SpeedTestResult {
+        <<interface>>
+        +number downloadSpeed
+        +number uploadSpeed
+        +number latency
+        +number packetLoss
+    }
