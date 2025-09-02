@@ -2,6 +2,8 @@ import { LinkType, LinkQuality } from '../types';
 import { Logger } from '../utils/logger';
 import axios from 'axios';
 
+import config from '../utils/envConfig';
+
 export interface SpeedTestResult {
   downloadSpeed: number; // Mbps
   uploadSpeed: number; // Mbps
@@ -13,7 +15,7 @@ export class MonitorAdapter {
   private logger = new Logger('MonitorAdapter');
 
   constructor(
-    private readonly flowControlManagerUrl: string,
+    private readonly sparkManagerUrl: string,
     private readonly agentId: string
   ) {}
 
@@ -26,7 +28,7 @@ export class MonitorAdapter {
         systemMetrics: await this.getSystemMetrics()
       };
 
-      await axios.post(`${this.flowControlManagerUrl}/api/monitoring`, monitoringData, {
+      await axios.post(`${this.sparkManagerUrl}/api/monitoring`, monitoringData, {
         timeout: 10000
       });
 
@@ -74,7 +76,7 @@ export class MonitorAdapter {
   private async measureLatency(): Promise<number> {
     const start = Date.now();
     try {
-      await axios.get('https://www.google.com', { timeout: 5000 });
+      await axios.get(config.AGENT_LINK_ADAPTER_TESTING_URL, { timeout: config.AGENT_LINK_ADPATER_TESTING_TIMEOUT });
       return Date.now() - start;
     } catch {
       return 9999;

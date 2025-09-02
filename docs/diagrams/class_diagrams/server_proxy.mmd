@@ -1,0 +1,19 @@
+---
+config:
+  theme: redux
+---
+classDiagram
+    %% Proxy Server
+    class SparkProxy {
+        -express app
+        -WebSocketServer wss
+        -Logger logger
+        -Set~WebSocket~ connectedClients
+        -number httpPort
+        -number wsPort
+        +constructor(httpPort, wsPort)
+        +start() Promise~void~
+        -setupHttpServer() void
+        -setupWebSocketServer() void
+        -broadcastMessage(message: Message) void
+    }

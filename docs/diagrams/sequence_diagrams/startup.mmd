@@ -1,0 +1,40 @@
+sequenceDiagram
+    title 1. Agent Startup and Initialization
+    
+    participant User
+    participant Agent as SparkAgent
+    participant Config as ConfigurationManager
+    participant Manager as SparkManager
+    participant Proxy as SparkProxy
+    participant API as ApiServer
+    participant Flow as FlowControl
+    participant Scheduler
+    
+    User->>Agent: Start Agent
+    Agent->>Agent: Initialize components
+    
+    Note over Agent: Configuration Phase
+    Agent->>Config: Initialize configuration
+    Config->>Manager: GET /api/configuration
+    Manager-->>Config: Default configuration
+    Config->>Config: Save local config
+    Config-->>Agent: Configuration ready
+    
+    Note over Agent: Dependency Check
+    Agent->>Manager: Health check
+    Manager-->>Agent: Healthy
+    Agent->>Proxy: Health check
+    Proxy-->>Agent: Healthy
+    
+    Note over Agent: Service Startup
+    Agent->>API: Start API server (port 3000)
+    Agent->>Flow: Initialize FlowControl
+    Agent->>Scheduler: Create scheduler (continuous/interval)
+    Agent->>Agent: Start link monitoring
+    
+    Note over Agent: Ready State
+    Agent-->>User: Agent started successfully
+    
+    rect rgb(200, 255, 200)
+        Note over Agent: Agent is now ready to process messages
+    end

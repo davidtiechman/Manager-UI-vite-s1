@@ -2,6 +2,8 @@ import { Message, SchedulerMode } from '../types';
 import { Logger } from '../utils/logger';
 import { Cache } from './cache';
 
+import config from '../utils/envConfig';
+
 export abstract class SchedulerBase {
   protected logger = new Logger('Scheduler');
   protected running = false;
@@ -26,7 +28,7 @@ export class ContinuousScheduler extends SchedulerBase {
     
     this.intervalId = setInterval(() => {
       this.processMessages();
-    }, 100); // Check every 100ms
+    }, config.AGENT_SCHEDULER_CONTINUOUS_CHECK_INTERVAL); // Check every 100ms
   }
 
   stop(): void {
@@ -55,7 +57,7 @@ export class IntervalScheduler extends SchedulerBase {
   constructor(
     cache: Cache,
     onMessage: (message: Message) => void,
-    private readonly intervalMs: number = 5000
+    private readonly intervalMs: number = config.AGENT_SCHEDULER_INTERVAL_INTERVAL
   ) {
     super(cache, onMessage);
   }
@@ -88,7 +90,7 @@ export class IntervalScheduler extends SchedulerBase {
     let message: Message | null;
     
     // Process up to 10 messages per batch
-    while (processed < 10 && (message = this.cache.getNextMessage())) {
+    while (processed < config.AGENT_SCHEDULER_INTERVAL_BATCH_SIZE && (message = this.cache.getNextMessage())) {
       this.onMessage(message);
       processed++;
     }

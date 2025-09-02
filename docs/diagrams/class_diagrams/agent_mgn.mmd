@@ -1,0 +1,112 @@
+---
+config:
+  theme: redux
+---
+classDiagram
+    %% Enums and Interfaces
+
+    %% Core Classes
+    class SparkAgent {
+        -string agentId
+        -ApiServer apiServer
+        -Receiver receiver
+        -Cache cache
+        -SchedulerBase scheduler
+        -Sender sender
+        -FlowControl flowControl
+        -ConfigurationManager configManager
+        -boolean running
+        +start() Promise~void~
+        +stop() Promise~void~
+        -handleApiMessage(message: Message) void
+        -handleValidMessage(message: Message) void
+        -handleScheduledMessage(message: Message) Promise~void~
+        -handleConfigUpdate(config: Configuration) void
+        -restartScheduler(config: Configuration) void
+        -startLinkMonitoring() void
+        -getStatus() AgentStatus
+    }
+
+    class DiscoveryService {
+        -Logger logger
+        -dgram.Socket lanSocket
+        -dgram.Socket wanSocket
+        -number lanPort
+        -number wanPort
+        -string multicastAddress
+        -string agentId
+        -function onDiscovery
+        +constructor(agentId, onDiscovery)
+        +start() void
+        +stop() void
+        +sendLanBroadcast(message: DiscoveryMessage) void
+        +sendWanMulticast(message: DiscoveryMessage) void
+        +announcePresence() void
+        -startLanDiscovery() void
+        -startWanDiscovery() void
+    }
+
+    %% Utility Classes
+    class Logger {
+        -winston.Logger logger
+        +constructor(component: string)
+        +info(message: string, meta?) void
+        +error(message: string, error?, meta?) void
+        +warn(message: string, meta?) void
+        +debug(message: string, meta?) void
+    }
+    class RouteManager {
+        -Logger logger
+        -Map~string, string~ currentRoutes
+        +setRoute(destination: string, gateway: string, linkType: LinkType) Promise~void~
+        +removeRoute(destination: string) Promise~void~
+        +setDefaultRoute(gateway: string, linkType: LinkType) Promise~void~
+        +getCurrentRoutes() Map~string, string~
+    }
+
+    class Configuration {
+	    +SchedulerMode schedulerMode
+	    +LinkType selectedLink
+	    +number intervalMs
+	    +number maxRetries
+	    +string sparkProxyUrl
+	    +string token
+    }
+    class ConfigurationManager {
+	    -Logger logger
+	    -Configuration config
+	    -number syncRetries
+	    -number maxSyncRetries
+	    -string configFilePath
+	    -NodeJS.Timeout syncInterval
+	    -string sparkManagerUrl
+	    -function onConfigUpdate
+	    +constructor(sparkManagerUrl, onConfigUpdate)
+	    +initialize() Promise~void~
+	    +syncConfiguration() Promise~boolean~
+	    +getConfiguration() Configuration | null
+	    +stop() void
+	    -loadLocalConfig() void
+	    -saveLocalConfig() void
+	    -enterSlowMode() void
+	    -startPeriodicSync() void
+    }
+
+
+
+    %% Relationships
+    DiscoveryService ..> DiscoveryMessage : uses
+    SparkAgent --* DiscoveryService : contains
+    SparkAgent --* RouteManager : contains
+    ConfigurationManager ..> Configuration : uses
+    SparkAgent --* ConfigurationManager : contains
+
+    %% Discovery Message Interface
+    class DiscoveryMessage {
+        <<interface>>
+        +string type
+        +string agentId
+        +number timestamp
+        +any data
+    }
+

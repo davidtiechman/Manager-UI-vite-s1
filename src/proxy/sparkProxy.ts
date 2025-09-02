@@ -3,10 +3,10 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { Message } from '../types';
 import { Logger } from '../utils/logger';
 
-export class ProxyServer {
+export class SparkProxy {
   private app = express();
   private wss: WebSocketServer;
-  private logger = new Logger('ProxyServer');
+  private logger = new Logger('SparkProxy');
   private connectedClients = new Set<WebSocket>();
 
   constructor(
@@ -81,8 +81,8 @@ export class ProxyServer {
   start(): Promise<void> {
     return new Promise((resolve) => {
       this.app.listen(this.httpPort, () => {
-        this.logger.info(`ProxyServer HTTP started on port ${this.httpPort}`);
-        this.logger.info(`ProxyServer WebSocket started on port ${this.wsPort}`);
+        this.logger.info(`SparkProxy HTTP started on port ${this.httpPort}`);
+        this.logger.info(`SparkProxy WebSocket started on port ${this.wsPort}`);
         resolve();
       });
     });

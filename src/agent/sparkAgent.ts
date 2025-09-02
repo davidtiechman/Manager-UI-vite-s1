@@ -7,11 +7,16 @@ import { SchedulerFactory, SchedulerBase } from '../core/scheduler';
 import { Sender } from '../core/sender';
 import { FlowControl } from '../core/flowControl';
 import { ConfigurationManager } from '../core/configurationManager';
+import { DiscoveryMessage, DiscoveryService } from '../discover/discoveryService';
+import { MonitorAdapter } from '../adapters/monitorAdapter';
+import { RouteManager } from '../utils/routeManager';
 import { v4 as uuidv4 } from 'uuid';
+import * as dgram from 'dgram';
 
-export class FlowControlAgent {
-  private logger = new Logger('FlowControlAgent');
+export class SparkAgent {
+  private logger = new Logger('SparkAgent');
   private agentId = uuidv4();
+  // core
   private apiServer: ApiServer;
   private receiver: Receiver;
   private cache: Cache;
@@ -21,17 +26,23 @@ export class FlowControlAgent {
   private configManager: ConfigurationManager;
   private running = false;
 
+  // mgn
+  private discoveryService: DiscoveryService;
+  private routeManager: RouteManager;
+  private monitorAdapter: MonitorAdapter;
+
   constructor(
     private readonly apiPort: number,
-    private readonly proxyServerUrl: string,
-    private readonly flowControlManagerUrl: string
+    private readonly sparkProxyUrl: string,
+    private readonly sparkManagerUrl: string,
+    private readonly linkMonitorInterval: number
   ) {
     this.cache = new Cache();
     this.receiver = new Receiver(this.handleValidMessage.bind(this));
-    this.sender = new Sender(this.proxyServerUrl);
+    this.sender = new Sender(this.sparkProxyUrl);
     this.flowControl = new FlowControl(this.sender);
     this.configManager = new ConfigurationManager(
-      this.flowControlManagerUrl,
+      this.sparkManagerUrl,
       this.handleConfigUpdate.bind(this)
     );
     
@@ -40,12 +51,24 @@ export class FlowControlAgent {
       this.handleApiMessage.bind(this),
       this.getStatus.bind(this)
     );
+
+    this.discoveryService = new DiscoveryService(
+      this.agentId, 
+      this.handleOnDiscovery.bind(this)
+    );
+
+    this.routeManager = new RouteManager();
+
+    this.monitorAdapter = new MonitorAdapter(
+      this.sparkManagerUrl,
+      this.agentId
+    );
   }
 
   async start(): Promise<void> {
     if (this.running) return;
 
-    this.logger.info('Starting Flow Control Agent', { agentId: this.agentId });
+    this.logger.info('Starting Spark Agent', { agentId: this.agentId });
     
     try {
       // Initialize configuration
@@ -58,9 +81,9 @@ export class FlowControlAgent {
       this.startLinkMonitoring();
       
       this.running = true;
-      this.logger.info('Flow Control Agent started successfully');
+      this.logger.info('Spark Agent started successfully');
     } catch (error) {
-      this.logger.error('Failed to start Flow Control Agent', error as Error);
+      this.logger.error('Failed to start Spark Agent', error as Error);
       throw error;
     }
   }
@@ -68,7 +91,7 @@ export class FlowControlAgent {
   async stop(): Promise<void> {
     if (!this.running) return;
 
-    this.logger.info('Stopping Flow Control Agent');
+    this.logger.info('Stopping Spark Agent');
     
     this.running = false;
     
@@ -79,7 +102,7 @@ export class FlowControlAgent {
     this.configManager.stop();
     this.stopLinkMonitoring();
     
-    this.logger.info('Flow Control Agent stopped');
+    this.logger.info('Spark Agent stopped');
   }
 
   private handleApiMessage(message: Message): void {
@@ -88,6 +111,10 @@ export class FlowControlAgent {
 
   private handleValidMessage(message: Message): void {
     this.cache.storeMessage(message);
+  }
+
+  private handleOnDiscovery (message: DiscoveryMessage, remote: dgram.RemoteInfo): void {
+    
   }
 
   private async handleScheduledMessage(message: Message): Promise<void> {
@@ -112,7 +139,7 @@ export class FlowControlAgent {
   private handleConfigUpdate(config: Configuration): void {
     this.logger.info('Configuration updated', { config });
     
-    // Update flow control
+    // Update spark
     this.flowControl.setSchedulerMode(config.schedulerMode);
     this.flowControl.setSelectedLink(config.selectedLink);
     
@@ -140,7 +167,7 @@ export class FlowControlAgent {
   private startLinkMonitoring(): void {
     this.linkMonitoringInterval = setInterval(async () => {
       await this.flowControl.updateLinkQualities();
-    }, 30000); // Update every 30 seconds
+    }, this.linkMonitorInterval); // Update every 30 seconds
   }
 
   private stopLinkMonitoring(): void {

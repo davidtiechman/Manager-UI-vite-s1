@@ -6,7 +6,7 @@ export class Sender {
   private logger = new Logger('Sender');
   private adapters = new Map<LinkType, LinkAdapter>();
 
-  constructor(private readonly proxyServerUrl: string) {
+  constructor(private readonly sparkProxyUrl: string) {
     this.adapters.set(LinkType.LAN, new LanAdapter());
     this.adapters.set(LinkType.MOBILE, new MobileAdapter());
     this.adapters.set(LinkType.WIFI, new WifiAdapter());
@@ -25,7 +25,7 @@ export class Sender {
         attempt: message.retries + 1 
       });
 
-      await adapter.transmit(message, this.proxyServerUrl);
+      await adapter.transmit(message, this.sparkProxyUrl);
       
       this.logger.info('Message sent successfully', { 
         messageId: message.id, 

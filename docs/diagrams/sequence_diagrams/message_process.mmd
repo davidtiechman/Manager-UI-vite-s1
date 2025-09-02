@@ -1,0 +1,100 @@
+%%{init: {
+  'theme': 'forest',
+  'themeVariables': {
+    'background': '#ffffff',
+    'mainBkg': '#f9f9f9',
+    'secondBkg': '#efefef'
+  }
+}}%%
+sequenceDiagram
+    autonumber
+
+    title 2. Message Processing Flow
+    
+    participant Client 
+    participant API as ApiServer
+    participant Receiver
+    participant Cache
+    participant Scheduler
+    participant SparkAgent
+    participant FlowControl
+    participant Sender
+    
+    participant LinkAdapter
+    participant Proxy as SparkProxy
+    
+    Note over Client: Message Submission
+    Client->>API: POST /api/messages
+
+    Note over API: Authorization: Bearer token
+    API->>API: Validate token
+
+    rect rgb(255, 200, 200)
+        alt Tokern Invalid
+            API->>Client: 401 Unauthorized
+        else Token Valid
+            API->>API: Validate message schema
+        end
+    end
+    
+    
+    
+    
+    rect rgb(255, 200, 200)
+        alt Message Invalid
+            API->>Client: 400 Bad Request
+        else Message Valid
+            Note over API: Message Processing
+            API->>Receiver: Process message
+            Receiver->>Receiver: Validate message (length, priority)
+        end
+    end
+
+    rect rgb(255, 200, 200)
+        alt Message Invalid
+            Receiver-->>API: Validation failed
+            API-->>Client: 400 Bad Request
+        else Message Valid
+            Receiver->>Cache: Store message by priority
+            Cache->>Cache: Add to priority queue
+            Receiver-->>API: Message accepted
+            API-->>Client: 200 Success + messageId
+        end
+    end
+    
+    Note over Scheduler: Asynchronous Processing
+
+    rect rgba(230, 220, 240)
+        Scheduler->>Cache: Get next highest priority message
+        Cache-->>Scheduler: Return message (CRITICAL → HIGH → MEDIUM → LOW)
+    end
+
+    %%Note over Scheduler: Link and Format Selection
+    %%rect rgba(210, 220, 240)
+    %%    Scheduler->>FlowControl: Get best LinkAdapter (WiFI/LAN/Mobile) and Format (Full/Short)
+    %%    FlowControl-->>Scheduler: return LinkAdapter And Format
+    %%end
+
+    Note over Scheduler: Message Transmission
+    rect rgb(200, 255, 200)
+    Scheduler-->>SparkAgent: Message ready to be send
+    SparkAgent->>FlowControl: Get selected link
+    FlowControl-->>SparkAgent: Selected link
+    SparkAgent->>Sender: Send message via selected link
+    Sender->>LinkAdapter: Transmit via LinkAdapter
+    LinkAdapter->>Proxy: POST /api/messages
+    
+        alt Transmission Success
+            Proxy-->>LinkAdapter: 200 OK
+            LinkAdapter-->>Sender: Success
+            Note over Sender: Message delivered
+        else Transmission Failure
+            LinkAdapter-->>Sender: Error
+            Sender->>Sender: Increment retry count
+            alt Retries Available
+                Sender->>Cache: Re-queue message
+            else Max Retries Exceeded
+                Note over Sender: Message dropped
+            end
+        end
+    end

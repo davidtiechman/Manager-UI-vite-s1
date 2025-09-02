@@ -2,6 +2,8 @@ import express from 'express';
 import { AgentStatus, Configuration, LinkType, SchedulerMode } from '../types';
 import { Logger } from '../utils/logger';
 
+import config from '../utils/envConfig';
+
 export interface RegisteredAgent {
   id: string;
   lastSeen: number;
@@ -9,17 +11,17 @@ export interface RegisteredAgent {
   configuration: Configuration;
 }
 
-export class FlowControlManager {
+export class SparkManager {
   private app = express();
-  private logger = new Logger('FlowControlManager');
+  private logger = new Logger('SparkManager');
   private agents = new Map<string, RegisteredAgent>();
   private defaultConfiguration: Configuration = {
-    schedulerMode: SchedulerMode.CONTINUOUS,
-    selectedLink: LinkType.WIFI,
-    intervalMs: 5000,
-    maxRetries: 3,
-    proxyServerUrl: 'http://localhost:8080/api/messages',
-    token: 'default-token'
+    schedulerMode: SchedulerMode.INTERVAL,
+    selectedLink: LinkType.MOBILE,
+    intervalMs: config.AGENT_SCHEDULER_INTERVAL_INTERVAL,
+    maxRetries: config.AGENT_API_MAX_MESSAGE_RETRIES,
+    sparkProxyUrl: config.AGENT_PROXY_URL,
+    token: config.AGENT_API_CLIENT_TOKEN
   };
 
   constructor(private readonly port: number) {
@@ -128,7 +130,7 @@ export class FlowControlManager {
   start(): Promise<void> {
     return new Promise((resolve) => {
       this.app.listen(this.port, () => {
-        this.logger.info(`FlowControlManager started on port ${this.port}`);
+        this.logger.info(`SparkManager started on port ${this.port}`);
         this.startAgentCleanup();
         resolve();
       });

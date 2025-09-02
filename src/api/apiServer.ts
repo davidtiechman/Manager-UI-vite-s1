@@ -4,8 +4,10 @@ import { Message, MessagePriority, AgentStatus } from '../types';
 import { Logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 
+import config from '../utils/envConfig';
+
 const messageSchema = Joi.object({
-  content: Joi.string().required().max(10000),
+  content: Joi.string().required().max(config.AGENT_API_MAX_MESSAGE_LENGTH),
   priority: Joi.number().valid(...Object.values(MessagePriority)).required()
 });
 
@@ -20,7 +22,7 @@ export class ApiServer {
     private readonly getStatus: () => AgentStatus,
     token?: string
   ) {
-    this.token = token || this.generateToken();
+    this.token = config.AGENT_API_CLIENT_TOKEN || token || this.generateToken();
     this.setupMiddleware();
     this.setupRoutes();
   }
@@ -53,7 +55,7 @@ export class ApiServer {
         priority: value.priority,
         timestamp: Date.now(),
         retries: 0,
-        maxRetries: 3
+        maxRetries: config.AGENT_API_MAX_MESSAGE_RETRIES
       };
 
       try {
@@ -84,7 +86,7 @@ export class ApiServer {
   start(): Promise<void> {
     return new Promise((resolve) => {
       this.app.listen(this.port, () => {
-        this.logger.info(`API Server started on port ${this.port}`);
+        this.logger.info(`API Server started on port ${this.port}, token is ${this.token}`);
         resolve();
       });
     });

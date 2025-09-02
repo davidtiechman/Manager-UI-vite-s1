@@ -1,0 +1,372 @@
+# GitLab CI/CD Pipeline for Spark - Build and Push to Quay.io
+
+variables:
+  # Docker Configuration
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_BUILDKIT: "1"
+  
+  # Registry Configuration
+  REGISTRY: quay.io
+  REGISTRY_NAMESPACE: silver_lx/israelways  # Change to your Quay.io namespace
+  IMAGE_NAME: spark
+  FULL_IMAGE_NAME: $REGISTRY/$REGISTRY_NAMESPACE/$IMAGE_NAME
+  
+  # Build Configuration
+  DOCKERFILE_PATH: ./docker/Dockerfile
+  BUILD_CONTEXT: .
+  
+  # Security
+  TRIVY_CACHE_DIR: .trivycache/
+
+# Pipeline Stages
+stages:
+  - validate
+  - build
+  - test
+  - security
+  - deploy
+
+# Global before_script
+before_script:
+  - echo "Pipeline started for Spark"
+  - echo "Registry:" $REGISTRY
+  - echo "Image:" $FULL_IMAGE_NAME
+  - echo "Branch:" $CI_COMMIT_REF_NAME
+  - echo "Commit:" $CI_COMMIT_SHA
+
+# ========================================
+# VALIDATION STAGE
+# ========================================
+
+# Validate Dockerfile
+validate:dockerfile:
+  stage: validate
+  image: hadolint/hadolint:latest-debian
+  script:
+    - echo "🔍 Validating Dockerfile with Hadolint..."
+    - hadolint $DOCKERFILE_PATH
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# Validate docker-compose
+validate:compose:
+  stage: validate
+  image: docker/compose:latest
+  script:
+    - echo "🔍 Validating docker-compose.yml..."
+    - docker-compose config --quiet
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# Lint TypeScript
+validate:typescript:
+  stage: validate
+  image: node:18-alpine
+  cache:
+    paths:
+      - node_modules/
+  script:
+    - echo "🔍 Installing dependencies..."
+    - npm ci
+    - echo "🔍 Linting TypeScript..."
+    - npm run lint || echo "Linting completed with warnings"
+    - echo "🔍 Type checking..."
+    - npm run type-check || npx tsc --noEmit
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# ========================================
+# BUILD STAGE
+# ========================================
+
+# Build unified Docker image
+build:docker:
+  stage: build
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  variables:
+    # Dynamic tags
+    IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    IMAGE_TAG_LATEST: $CI_COMMIT_REF_SLUG
+  before_script:
+    - echo "🐳 Setting up Docker..."
+    - docker info
+    - echo "🔑 Logging into Quay.io..."
+    - echo $QUAY_PASSWORD | docker login -u $QUAY_USERNAME --password-stdin $REGISTRY
+  script:
+    - echo "🏗️ Building Spark unified image..."
+    - |
+      docker build \
+        --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+        --build-arg VCS_REF=$CI_COMMIT_SHA \
+        --build-arg VERSION=${CI_COMMIT_TAG:-$CI_COMMIT_REF_NAME} \
+        --cache-from $FULL_IMAGE_NAME:cache \
+        --tag $FULL_IMAGE_NAME:$IMAGE_TAG \
+        --tag $FULL_IMAGE_NAME:$IMAGE_TAG_LATEST \
+        --file $DOCKERFILE_PATH \
+        $BUILD_CONTEXT
+    
+    - echo "📋 Image details:"
+    - docker images $FULL_IMAGE_NAME
+    - docker inspect $FULL_IMAGE_NAME:$IMAGE_TAG --format='{{.Config.Labels}}'
+    
+    - echo "🚀 Pushing images to Quay.io..."
+    - docker push $FULL_IMAGE_NAME:$IMAGE_TAG
+    - docker push $FULL_IMAGE_NAME:$IMAGE_TAG_LATEST
+    
+    # Push cache layer for next builds
+    - docker tag $FULL_IMAGE_NAME:$IMAGE_TAG $FULL_IMAGE_NAME:cache
+    - docker push $FULL_IMAGE_NAME:cache || echo "Cache push failed, continuing..."
+    
+    - echo "✅ Build completed successfully!"
+    - echo "Image:" $FULL_IMAGE_NAME:$IMAGE_TAG
+  artifacts:
+    reports:
+      dotenv: build.env
+    expire_in: 1 hour
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# ========================================
+# TEST STAGE
+# ========================================
+
+# Test all service types
+test:service-types:
+  stage: test
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  variables:
+    IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    TEST_NETWORK: spark-test
+  before_script:
+    - echo $QUAY_PASSWORD | docker login -u $QUAY_USERNAME --password-stdin $REGISTRY
+    - docker pull $FULL_IMAGE_NAME:$IMAGE_TAG
+    - docker network create $TEST_NETWORK || true
+  script:
+    - echo "🧪 Testing all service types..."
+    
+    # Test Manager
+    - echo "Testing Manager service type..."
+    - |
+      docker run --rm --network $TEST_NETWORK \
+        -e SERVICE_TYPE=manager \
+        -e NODE_ENV=test \
+        -e MANAGER_PORT=9000 \
+        --name test-manager \
+        $FULL_IMAGE_NAME:$IMAGE_TAG timeout 30 sh -c "
+          echo 'Starting manager test...'
+          ./docker/shared/entrypoint.sh &
+          ENTRYPOINT_PID=\$!
+          sleep 10
+          kill \$ENTRYPOINT_PID 2>/dev/null || true
+          echo 'Manager test completed'
+        "
+    
+    # Test Proxy
+    - echo "Testing Proxy service type..."
+    - |
+      docker run --rm --network $TEST_NETWORK \
+        -e SERVICE_TYPE=proxy \
+        -e NODE_ENV=test \
+        -e HTTP_PORT=8080 \
+        -e WS_PORT=8081 \
+        --name test-proxy \
+        $FULL_IMAGE_NAME:$IMAGE_TAG timeout 30 sh -c "
+          echo 'Starting proxy test...'
+          ./docker/shared/entrypoint.sh &
+          ENTRYPOINT_PID=\$!
+          sleep 10
+          kill \$ENTRYPOINT_PID 2>/dev/null || true
+          echo 'Proxy test completed'
+        "
+    
+    # Test Agent
+    - echo "Testing Agent service type..."
+    - |
+      docker run --rm --network $TEST_NETWORK \
+        -e SERVICE_TYPE=agent \
+        -e NODE_ENV=test \
+        -e API_PORT=3000 \
+        --name test-agent \
+        $FULL_IMAGE_NAME:$IMAGE_TAG timeout 30 sh -c "
+          echo 'Starting agent test...'
+          ./docker/shared/entrypoint.sh &
+          ENTRYPOINT_PID=\$!
+          sleep 10
+          kill \$ENTRYPOINT_PID 2>/dev/null || true
+          echo 'Agent test completed'
+        "
+    
+    - echo "✅ All service type tests passed!"
+  after_script:
+    - docker network rm $TEST_NETWORK || true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# Integration test with docker-compose
+test:integration:
+  stage: test
+  image: docker/compose:latest
+  services:
+    - docker:24-dind
+  variables:
+    IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+    COMPOSE_PROJECT_NAME: spark-test-$CI_PIPELINE_ID
+  before_script:
+    - echo $QUAY_PASSWORD | docker login -u $QUAY_USERNAME --password-stdin $REGISTRY
+    - export SI_RELAY_IMAGE=$FULL_IMAGE_NAME:$IMAGE_TAG
+  script:
+    - echo "🧪 Running integration tests..."
+    
+    # Create test docker-compose override
+    - |
+      cat > docker-compose.test.yml << EOF
+      version: '3.8'
+      services:
+        spark-manager:
+          image: $FULL_IMAGE_NAME:$IMAGE_TAG
+          environment:
+            - NODE_ENV=test
+            - LOG_LEVEL=debug
+        spark-proxy:
+          image: $FULL_IMAGE_NAME:$IMAGE_TAG
+          environment:
+            - NODE_ENV=test
+            - LOG_LEVEL=debug
+        spark-agent:
+          image: $FULL_IMAGE_NAME:$IMAGE_TAG
+          environment:
+            - NODE_ENV=test
+            - LOG_LEVEL=debug
+      EOF
+    
+    # Start services
+    - docker-compose -f docker-compose.yml -f docker-compose.test.yml up -d
+    
+    # Wait for services to be healthy
+    - echo "Waiting for services to be healthy..."
+    - timeout 180 sh -c 'until docker-compose ps | grep -q "healthy"; do echo "Waiting..."; sleep 10; done'
+    
+    # Run basic connectivity tests
+    - echo "Testing service connectivity..."
+    - docker-compose exec -T spark-manager curl -f http://localhost:9000/health
+    - docker-compose exec -T spark-proxy curl -f http://localhost:8080/health
+    - docker-compose exec -T spark-agent curl -f http://localhost:3000/health
+    
+    - echo "✅ Integration tests passed!"
+  after_script:
+    - docker-compose -f docker-compose.yml -f docker-compose.test.yml down -v || true
+    - docker system prune -f || true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# ========================================
+# SECURITY STAGE
+# ========================================
+
+# Security scan with Trivy
+security:scan:
+  stage: security
+  image: aquasec/trivy:latest
+  variables:
+    IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+  cache:
+    paths:
+      - .trivycache/
+  before_script:
+    - echo $QUAY_PASSWORD | trivy login -u $QUAY_USERNAME --password-stdin $REGISTRY
+  script:
+    - echo "🔒 Running security scan with Trivy..."
+    
+    # Update Trivy database
+    - trivy image --download-db-only --cache-dir $TRIVY_CACHE_DIR
+    
+    # Scan for vulnerabilities
+    - |
+      trivy image \
+        --cache-dir $TRIVY_CACHE_DIR \
+        --format table \
+        --exit-code 0 \
+        --severity HIGH,CRITICAL \
+        $FULL_IMAGE_NAME:$IMAGE_TAG
+    
+    # Generate JSON report for GitLab Security Dashboard
+    - |
+      trivy image \
+        --cache-dir $TRIVY_CACHE_DIR \
+        --format json \
+        --output trivy-report.json \
+        $FULL_IMAGE_NAME:$IMAGE_TAG
+    
+    - echo "✅ Security scan completed!"
+  artifacts:
+    reports:
+      container_scanning: trivy-report.json
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+  allow_failure: true
+
+# ========================================
+# DEPLOY STAGE
+# ========================================
+
+# Deploy latest tag for main branch
+deploy:latest:
+  stage: deploy
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  variables:
+    IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+  before_script:
+    - echo $QUAY_PASSWORD | docker login -u $QUAY_USERNAME --password-stdin $REGISTRY
+  script:
+    - echo "🚀 Deploying latest tag..."
+    - docker pull $FULL_IMAGE_NAME:$IMAGE_TAG
+    - docker tag $FULL_IMAGE_NAME:$IMAGE_TAG $FULL_IMAGE_NAME:latest
+    - docker push $FULL_IMAGE_NAME:latest
+    - echo "✅ Latest tag deployed!"
+    - echo "Image:" $FULL_IMAGE_NAME:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Deploy release tags
+deploy:release:
+  stage: deploy
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  variables:
+    IMAGE_TAG: $CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA
+  before_script:
+    - echo $QUAY_PASSWORD | docker login -u $QUAY_USERNAME --password-stdin $REGISTRY
+  script:
+    - echo "🚀 Deploying release tag:" $CI_COMMIT_TAG
+    - docker pull $FULL_IMAGE_NAME:$IMAGE_TAG
+    - docker tag $FULL_IMAGE_NAME:$IMAGE_TAG $FULL_IMAGE_NAME:$CI_COMMIT_TAG
+    - docker push $FULL_IMAGE_NAME:$CI_COMMIT_TAG
+    
+    # Also tag as stable if it's a stable release (v1.0.0, v2.1.3, etc.)
+    - |
+      if echo "$CI_COMMIT_TAG" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+ old tags"
+    - echo "Consider implementing cleanup based on your retention policy"
+  rules:
+    - when: manual
+  allow_failure: true
