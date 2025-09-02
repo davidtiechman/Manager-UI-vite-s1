@@ -1,0 +1,33 @@
+---
+config:
+  theme: neo
+  layout: dagre
+  look: classic
+---
+flowchart LR
+    A(["On sending message"]) --> B{"Run Agent"}
+    B -- no --> C["No sender"]
+    C --- E["No mode"]
+    B -- yes --> D["Sender"] & F["Scheduler"]
+    D --> G{"is auto mode"}
+    G -- no --> H{"is ip sender"}
+    H -- yes --> J{"is mobile connected"}
+    G -- yes --> J
+    H -- no --> V["TD Sender"]
+    J -- no --> V
+    J -- yes --> W["IP Sender"]
+    F --> K{"is auto mode"}
+    K -- no --> L{"is continuous mode"}
+    L -- yes --> M{"is mobile connected"}
+    K -- yes --> M
+    L -- no --> U["Interval mode"]
+    M -- no --> U
+    M -- yes --> I{"is good bandwith"}
+    I -- no --> U
+    I -- yes --> O["Continuous mode"]
+    style C stroke:#FF6D00
+    style E stroke:#2962FF
+    style V stroke:#FF6D00
+    style W stroke:#FF6D00
+    style U stroke:#2962FF
+    style O stroke:#2962FF

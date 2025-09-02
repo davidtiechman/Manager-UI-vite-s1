@@ -1,0 +1,91 @@
+---
+config:
+  theme: redux
+---
+classDiagram
+    LinkAdapter <|-- LanAdapter : extends
+    LinkAdapter <|-- WifiAdapter : extends
+    LinkAdapter <|-- MobileAdapter : extends
+    LinkAdapter --* CircuitBreaker : contains
+    LinkAdapter ..> LinkType : uses
+    LinkAdapter ..> LinkQuality : uses
+
+    Sender --* LinkAdapter : contains
+    Sender ..> LinkType : uses
+    Sender ..> LinkQuality : uses
+
+
+    class Sender {
+        -Logger logger
+        -Map~LinkType, LinkAdapter~ adapters
+        -string sparkProxyUrl
+        +constructor(sparkProxyUrl)
+        +sendMessage(message: Message, linkType: LinkType) Promise~void~
+        +getAvailableLinks() LinkType[]
+        +getLinkQuality(linkType: LinkType) Promise~LinkQuality~
+    }
+
+    %% Link Adapters
+    class LinkAdapter {
+        <<abstract>>
+        #Logger logger
+        #CircuitBreaker circuitBreaker
+        #LinkType linkType
+        +constructor(linkType)
+        +checkAvailability()* Promise~boolean~
+        +measureBandwidth()* Promise~number~
+        +measureLatency()* Promise~number~
+        +transmit(data, url)* Promise~void~
+        +getLinkQuality() Promise~LinkQuality~
+        -calculateReliability(available, latency) number
+    }
+
+    class LanAdapter {
+        +checkAvailability() Promise~boolean~
+        +measureBandwidth() Promise~number~
+        +measureLatency() Promise~number~
+        +transmit(data, url) Promise~void~
+    }
+
+    class WifiAdapter {
+        +checkAvailability() Promise~boolean~
+        +measureBandwidth() Promise~number~
+        +measureLatency() Promise~number~
+        +transmit(data, url) Promise~void~
+    }
+
+    class MobileAdapter {
+        +checkAvailability() Promise~boolean~
+        +measureBandwidth() Promise~number~
+        +measureLatency() Promise~number~
+        +transmit(data, url) Promise~void~
+    }
+
+    class CircuitBreaker {
+        -number failures
+        -number lastFailureTime
+        -string state
+        -number threshold
+        -number timeout
+        +constructor(threshold?, timeout?)
+        +execute~T~(operation: () => Promise~T~) Promise~T~
+        -onSuccess() void
+        -onFailure() void
+    }
+
+    class LinkQuality {
+        <<interface>>
+        +LinkType type
+        +boolean available
+        +number bandwidth
+        +number latency
+        +number reliability
+        +number timestamp
+    }
+
+        class LinkType {
+        <<enumeration>>
+        LAN
+        WIFI
+        MOBILE
+    }

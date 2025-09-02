@@ -1,6 +1,8 @@
 import * as dgram from 'dgram';
 import { Logger } from '../utils/logger';
 
+import config from '../utils/envConfig';
+
 export interface DiscoveryMessage {
   type: 'discover' | 'announce';
   agentId: string;
@@ -12,9 +14,9 @@ export class DiscoveryService {
   private logger = new Logger('DiscoveryService');
   private lanSocket?: dgram.Socket;
   private wanSocket?: dgram.Socket;
-  private readonly lanPort = 8888;
-  private readonly wanPort = 8889;
-  private readonly multicastAddress = '224.0.0.1';
+  private readonly lanPort = config.AGENT_DISCOVERY_LAN_PORT;
+  private readonly wanPort = config.AGENT_DISCOVERY_WAN_PORT;
+  private readonly multicastAddress = config.AGENT_DISCOVERY_MULTICAST_ADDRESS;
 
   constructor(
     private readonly agentId: string,

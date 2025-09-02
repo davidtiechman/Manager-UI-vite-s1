@@ -1,0 +1,81 @@
+%%{init: {
+  'theme': 'forest',
+  'themeVariables': {
+    'background': '#ffffff',
+    'mainBkg': '#f9f9f9',
+    'secondBkg': '#efefef'
+  }
+}}%%
+sequenceDiagram
+    title 4. Configuration Sync and Error Handling
+    
+    participant Agent as SparkAgent
+    participant Config as ConfigurationManager
+    participant Manager as SparkManager
+    participant Flow as FlowControl
+    participant Scheduler
+    participant Circuit as CircuitBreaker
+    
+    Note over Config: Periodic Configuration Sync (every 60s)
+    Config->>Manager: GET /api/configuration
+    
+    rect rgb(200, 255, 200)
+        alt Manager Available
+            Manager-->>Config: Updated configuration
+            Config->>Config: Compare with local config
+            
+            alt Configuration Changed
+                Config->>Config: Save new configuration
+                Config->>Agent: Notify configuration update
+                
+                Note over Agent: Apply Configuration Changes
+                Agent->>Flow: Update scheduler mode
+                Agent->>Flow: Update selected link (if manual override)
+                Agent->>Agent: Restart scheduler with new settings
+                Agent->>Scheduler: Stop current scheduler
+                Agent->>Scheduler: Create new scheduler (continuous/interval)
+                Agent->>Scheduler: Start new scheduler
+                
+                Note over Agent: Configuration applied successfully
+            else No Changes
+                Note over Config: Continue with current configuration
+            end
+        else Manager Unavailable
+            Config->>Config: Increment sync failure count
+            
+            alt Max Retries Exceeded
+                Config->>Config: Enter slow mode
+                Config->>Agent: Switch to slow mode configuration
+                Agent->>Flow: Set scheduler mode = INTERVAL
+                Agent->>Flow: Set interval = 30 seconds
+                Agent->>Agent: Restart scheduler in slow mode
+                
+                rect rgb(255, 200, 200)
+                    Note over Config: Operating in degraded mode
+                end
+            else Retries Available
+                Note over Config: Will retry on next sync cycle
+            end
+        end
+    end
+    
+    Note over Circuit: Circuit Breaker Protection
+    
+    rect rgb(255, 255, 200)
+        Note over Circuit: Protects against cascading failures
+        alt Circuit CLOSED (Normal)
+            Note over Circuit: Requests pass through normally
+        else Circuit OPEN (Failing)
+            Note over Circuit: Fast-fail mode - reject requests immediately
+        else Circuit HALF_OPEN (Testing)
+            Note over Circuit: Allow limited requests to test recovery
+        end
+    end
+    
+    Note over Agent: Error Recovery Strategies
+    rect rgb(200, 255, 255)
+        Note over Agent: 1. Configuration fallback to local cache
+        Note over Agent: 2. Link failover to alternative connections
+        Note over Agent: 3. Message retry with exponential backoff
+        Note over Agent: 4. Graceful degradation to slow mode
+    end

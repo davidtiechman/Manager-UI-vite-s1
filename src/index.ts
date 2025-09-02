@@ -1,13 +1,21 @@
-import { FlowControlAgent } from './agent/flowControlAgent';
-import { FlowControlManager } from './manager/flowControlManager';
-import { ProxyServer } from './proxy/proxyServer';
+import { SparkAgent } from './agent/sparkAgent';
+import { SparkManager } from './manager/sparkManager';
+import { SparkProxy } from './proxy/sparkProxy';
 import { Logger } from './utils/logger';
+import config from './utils/envConfig';
+import { log } from 'console';
 
 const logger = new Logger('Main');
+
+
 
 async function main() {
   const args = process.argv.slice(2);
   const mode = args[0] || 'agent';
+
+  logger.info("------");
+  logger.info(`AgentId=${config.agentId}, ApiServerPort=${config.api_port}`);
+  logger.info("------");
 
   try {
     switch (mode) {
@@ -18,7 +26,7 @@ async function main() {
         await startManager();
         break;
       case 'proxy':
-        await startProxyServer();
+        await startSparkProxy();
         break;
       case 'all':
         await startAll();
@@ -34,13 +42,22 @@ async function main() {
 }
 
 async function startAgent() {
-  logger.info('Starting Flow Control Agent');
+  logger.info('Starting Spark Agent');
   
-  const agent = new FlowControlAgent(
+  /*const agent = new SparkAgent(
     3000, // API port
     'http://localhost:8080/api/messages', // Proxy server URL
-    'http://localhost:9000' // Flow Control Manager URL
+    'http://localhost:9000' // Spark Manager URL
+  );*/
+
+  const agent = new SparkAgent(
+    config.api_port,
+    config.AGENT_PROXY_URL,
+    config.AGENT_MANAGER_URL,
+    config.AGENT_LINK_MONITOR_INTERVAL
   );
+
+  
 
   await agent.start();
   
@@ -53,9 +70,9 @@ async function startAgent() {
 }
 
 async function startManager() {
-  logger.info('Starting Flow Control Manager');
+  logger.info('Starting Spark Manager');
   
-  const manager = new FlowControlManager(9000);
+  const manager = new SparkManager(config.MANAGER_SERVER_PORT);
   await manager.start();
   
   process.on('SIGINT', () => {
@@ -64,10 +81,10 @@ async function startManager() {
   });
 }
 
-async function startProxyServer() {
+async function startSparkProxy() {
   logger.info('Starting Proxy Server');
   
-  const proxy = new ProxyServer(8080, 8081);
+  const proxy = new SparkProxy(config.PROXY_HTTPS_SERVER_PORT, config.PROXY_WS_SERVER_PORT);
   await proxy.start();
   
   process.on('SIGINT', () => {
@@ -83,7 +100,7 @@ async function startAll() {
   await startManager();
   await new Promise(resolve => setTimeout(resolve, 2000));
   
-  await startProxyServer();
+  await startSparkProxy();
   await new Promise(resolve => setTimeout(resolve, 2000));
   
   await startAgent();
@@ -94,6 +111,6 @@ if (require.main === module) {
 }
 
 export * from './types';
-export * from './agent/flowControlAgent';
-export * from './manager/flowControlManager';
-export * from './proxy/proxyServer';
+export * from './agent/sparkAgent';
+export * from './manager/sparkManager';
+export * from './proxy/sparkProxy';

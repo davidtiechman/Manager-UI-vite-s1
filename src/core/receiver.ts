@@ -1,6 +1,9 @@
+
 import { Message } from '../types';
 import { MessagePriority } from '../types';
 import { Logger } from '../utils/logger';
+
+import config from '../utils/envConfig';
 
 export class Receiver {
   private logger = new Logger('Receiver');
@@ -24,7 +27,7 @@ export class Receiver {
       return false;
     }
 
-    if (message.content.length > 10000) {
+    if (message.content.length > config.AGENT_API_MAX_MESSAGE_LENGTH) {
       return false;
     }
 

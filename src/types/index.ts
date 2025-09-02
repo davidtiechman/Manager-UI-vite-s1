@@ -39,7 +39,7 @@ export interface Configuration {
   selectedLink: LinkType;
   intervalMs: number;
   maxRetries: number;
-  proxyServerUrl: string;
+  sparkProxyUrl: string;
   token: string;
 }
 
