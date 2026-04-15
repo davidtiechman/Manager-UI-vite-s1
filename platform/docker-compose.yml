@@ -10,7 +10,7 @@ services:
     volumes:
       - ./manager/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d managerdb"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d managerdb" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -26,10 +26,6 @@ services:
       - "9000:9000"
     depends_on:
       - postgres
-
-  agent-001:
-      postgres:
-        condition: service_healthy
 
   agent:
     build:
@@ -80,6 +76,7 @@ services:
       AGENT_ID: agent-005
     depends_on:
       - manager
+
   ui:
     build:
       context: ./ui
@@ -90,4 +87,3 @@ services:
       - "5173:5173"
     depends_on:
       - manager
-
