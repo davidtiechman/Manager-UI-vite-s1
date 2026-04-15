@@ -2,7 +2,9 @@
 
 This folder contains a new standalone architecture focused on frontend development with mock-like generated runtime data:
 
+- Five agents (`agent-001`..`agent-005`) send sync payloads to `manager` every 15 seconds (or server-defined interval).
 - `agent` sends sync payload to `manager` every 15 seconds (or server-defined interval).
+codex/create-new-project
 - `manager` stores all sync data in PostgreSQL and returns active configuration.
 - `ui` polls `manager` continuously and renders real-time + history views.
 
@@ -17,6 +19,8 @@ This folder contains a new standalone architecture focused on frontend developme
 ```bash
 cd platform
 docker compose up --build
+# (will start 5 agents automatically)
+codex/create-new-project
 ```
 
 ## Key API

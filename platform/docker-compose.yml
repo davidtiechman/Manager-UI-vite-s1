@@ -25,6 +25,9 @@ services:
     ports:
       - "9000:9000"
     depends_on:
+      - postgres
+
+  agent-001:
       postgres:
         condition: service_healthy
 
@@ -38,6 +41,45 @@ services:
     depends_on:
       - manager
 
+  agent-002:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      MANAGER_URL: http://manager:9000
+      AGENT_ID: agent-002
+    depends_on:
+      - manager
+
+  agent-003:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      MANAGER_URL: http://manager:9000
+      AGENT_ID: agent-003
+    depends_on:
+      - manager
+
+  agent-004:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      MANAGER_URL: http://manager:9000
+      AGENT_ID: agent-004
+    depends_on:
+      - manager
+
+  agent-005:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      MANAGER_URL: http://manager:9000
+      AGENT_ID: agent-005
+    depends_on:
+      - manager
   ui:
     build:
       context: ./ui
@@ -48,3 +90,4 @@ services:
       - "5173:5173"
     depends_on:
       - manager
+
