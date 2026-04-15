@@ -1,0 +1,45 @@
+version: '3.9'
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: managerdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./manager/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  manager:
+    build:
+      context: ./manager
+      dockerfile: Dockerfile
+    environment:
+      MANAGER_PORT: 9000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/managerdb
+    ports:
+      - "9000:9000"
+    depends_on:
+      - postgres
+
+  agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      MANAGER_URL: http://manager:9000
+      AGENT_ID: agent-001
+    depends_on:
+      - manager
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    environment:
+      VITE_MANAGER_URL: http://localhost:9000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - manager
