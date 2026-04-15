@@ -67,7 +67,14 @@ export default function App() {
             <h2>לוח בקרה תפעולי לסוכנים</h2>
             <p className="muted">מצב ברירת מחדל: ניטור נתונים נוכחיים בזמן אמת</p>
           </div>
-          <div className="status-chip">שידור חי • עודכן לאחרונה ב־{lastUpdated}</div>
+          <div className="topbar-actions">
+            {mode === 'history' && (
+              <button className="back-button" onClick={() => setMode('realtime')} aria-label="חזרה לעמוד הראשי">
+                ← חזרה
+              </button>
+            )}
+            <div className="status-chip">שידור חי • עודכן לאחרונה ב־{lastUpdated}</div>
+          </div>
         </header>
 
         {mode === 'realtime' ? (
@@ -77,8 +84,9 @@ export default function App() {
           </>
         ) : (
           <HistoryPanel data={history} />
-        )}
-      </main>
-    </div>
+        )
+        }
+      </main >
+    </div >
   );
 }
