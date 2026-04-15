@@ -70,7 +70,12 @@ export default function App() {
           <div className="topbar-actions">
             {mode === 'history' && (
               <button className="back-button" onClick={() => setMode('realtime')} aria-label="חזרה לעמוד הראשי">
-                ← חזרה
+                <span className="back-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <span>חזרה</span>
               </button>
             )}
             <div className="status-chip">שידור חי • עודכן לאחרונה ב־{lastUpdated}</div>

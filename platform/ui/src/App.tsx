@@ -16,6 +16,10 @@ export default function App() {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [history, setHistory] = useState<AgentRow[]>([]);
 
+  const handleBack = () => {
+    setSelectedAgent(null);
+  };
+
   useEffect(() => {
     const load = async () => {
       const res = await fetch(`${managerUrl}/api/ui/agents`);
@@ -73,7 +77,19 @@ export default function App() {
         </tbody>
       </table>
 
-      <h2>History: {selectedAgent ?? 'בחר Agent'}</h2>
+      <div className="history-header">
+        <h2>History: {selectedAgent ?? 'בחר Agent'}</h2>
+        {selectedAgent && (
+          <button className="back-button" onClick={handleBack} aria-label="חזרה">
+            <span className="back-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 5l-7 7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            חזרה
+          </button>
+        )}
+      </div>
       <ul>
         {history.map((h, idx) => (
           <li key={idx}>
