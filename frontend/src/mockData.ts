@@ -1,0 +1,61 @@
+import type { AgentRow, HistoryPoint } from './types';
+
+export const initialAgents: AgentRow[] = [
+  {
+    id: 'ag-101',
+    unit: 'פיקוד צפון',
+    callSign: 'N-ALPHA',
+    status: 'online',
+    selectedLink: 'satcom',
+    schedulerMode: 'auto',
+    latencyMs: 72,
+    reliability: 0.98,
+    queue: 2,
+    updatedSecondsAgo: 4,
+  },
+  {
+    id: 'ag-204',
+    unit: 'ממסר מזרח',
+    callSign: 'E-ROOK',
+    status: 'warning',
+    selectedLink: 'lte',
+    schedulerMode: 'manual',
+    latencyMs: 181,
+    reliability: 0.86,
+    queue: 14,
+    updatedSecondsAgo: 9,
+  },
+  {
+    id: 'ag-309',
+    unit: 'מבצעי ים',
+    callSign: 'SEA-77',
+    status: 'online',
+    selectedLink: 'rf',
+    schedulerMode: 'auto',
+    latencyMs: 104,
+    reliability: 0.92,
+    queue: 6,
+    updatedSecondsAgo: 6,
+  },
+  {
+    id: 'ag-412',
+    unit: 'צומת מערב',
+    callSign: 'W-HALO',
+    status: 'offline',
+    selectedLink: 'satcom',
+    schedulerMode: 'auto',
+    latencyMs: 350,
+    reliability: 0.51,
+    queue: 27,
+    updatedSecondsAgo: 43,
+  },
+];
+
+export const history: HistoryPoint[] = [
+  { time: '10:00', latencyMs: 75, reliability: 0.99 },
+  { time: '10:15', latencyMs: 88, reliability: 0.97 },
+  { time: '10:30', latencyMs: 95, reliability: 0.95 },
+  { time: '10:45', latencyMs: 121, reliability: 0.93 },
+  { time: '11:00', latencyMs: 110, reliability: 0.94 },
+  { time: '11:15', latencyMs: 84, reliability: 0.97 },
+];
