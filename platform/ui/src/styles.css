@@ -1,0 +1,6 @@
+body { margin: 0; font-family: Arial, sans-serif; background: #0e1424; color: #eaf0ff; }
+.layout { padding: 20px; }
+table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+th, td { border: 1px solid #32405f; padding: 10px; text-align: right; }
+tr:hover { background: #1a2440; cursor: pointer; }
+li { margin: 6px 0; }
