@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { AgentStatus } from '../types';
 import Details from "../components/Details";
 import { initialAgents } from '../mockData';
+import TankIcon from '../components/TankIcon';
 
 export default function HomePage() {
   const [agents] = useState<AgentStatus[]>(initialAgents);
@@ -25,7 +26,9 @@ export default function HomePage() {
             className={`agent-card ${agent.status}`}
             onClick={() => setSelectedAgent(agent)}
           >
-            <div className="tank-icon">🛡️</div>
+            <div className="tank-icon">
+              <TankIcon status={agent.status} />
+            </div>
             <div className="agent-label">{getAgentLabel(agent)}</div>
             <div className="agent-info">
               <div className="info-item">יחידה: {agent.unit}</div>
