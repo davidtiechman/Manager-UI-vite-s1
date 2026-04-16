@@ -1,16 +1,19 @@
 
 export interface AgentStatus {
   id: string;
-  lastSeen: Date;
+  lastSeen: string | Date;
   status: 'online' | 'warning' | 'offline';
   schedulerMode: string;
   selectedLink: string;
   messagesInQueue: number;
-  nextDeliveryTime: Date;
-  serverLut: Date;
+  nextDeliveryTime: string | Date;
+  serverLut: string | Date;
   linkType: string;
   linkAvailable: boolean;
   linkQuality: number;
+  latency: number;
+  reliability: number;
+  linkTimestamp: string | Date;
   unit: string;
   unit_code: string;
   zayad_id: string;
@@ -33,6 +36,6 @@ export interface AgentConfig {
 
 export interface HistoryPoint {
   time: string;
-  latencyMs: number;
+  latency: number;
   reliability: number;
 }

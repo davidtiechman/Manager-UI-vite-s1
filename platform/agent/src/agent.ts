@@ -10,6 +10,7 @@ function randomMetrics() {
     reliability: Number((0.8 + Math.random() * 0.2).toFixed(2)),
     queueSize: Math.max(0, Math.round(Math.random() * 20)),
     status: 'active',
+    schedulerMode: 'auto', // Add scheduler_mode
   };
 }
 

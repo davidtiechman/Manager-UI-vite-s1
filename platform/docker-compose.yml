@@ -8,9 +8,10 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./manager/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./manager/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./manager/db/sample-data.sql:/docker-entrypoint-initdb.d/02-sample-data.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d managerdb"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d managerdb" ]
       interval: 5s
       timeout: 5s
       retries: 10
