@@ -5,6 +5,9 @@ import Details from './Details';
 type UiAgentResponse = {
   id: string;
   status: string;
+  selected_link: string | null;
+  scheduler_mode: string | null;
+  interval_seconds: number | null;
   last_sync_at: string | null;
   latency_ms: number | null;
   reliability: number | null;
@@ -29,17 +32,18 @@ function normalizeStatus(status: string): AgentStatus['status'] {
 
 function toAgentStatus(row: UiAgentResponse): AgentStatus {
   const lastSeen = row.last_sync_at ? new Date(row.last_sync_at) : new Date();
+  const intervalMs = (row.interval_seconds ?? 15) * 1000;
 
   return {
     id: row.id,
     lastSeen,
     status: normalizeStatus(row.status),
-    schedulerMode: 'interval',
-    selectedLink: 'lte',
+    schedulerMode: row.scheduler_mode ?? 'interval',
+    selectedLink: row.selected_link ?? 'lte',
     messagesInQueue: row.queue_size ?? 0,
-    nextDeliveryTime: new Date(lastSeen.getTime() + 15_000),
+    nextDeliveryTime: new Date(lastSeen.getTime() + intervalMs),
     serverLut: new Date(),
-    linkType: 'lte',
+    linkType: row.selected_link ?? 'lte',
     linkAvailable: true,
     linkQuality: row.reliability ?? 0,
     unit: '-',
@@ -58,32 +62,28 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
+    const abortController = new AbortController();
 
     const fetchAgents = async () => {
       try {
-        const response = await fetch(`${MANAGER_BASE_URL}/api/ui/agents`);
+        const response = await fetch(`${MANAGER_BASE_URL}/api/ui/agents`, {
+          signal: abortController.signal,
+        });
         if (!response.ok) {
           throw new Error(`Server returned ${response.status}`);
         }
 
         const data = (await response.json()) as UiAgentResponse[];
-        if (!isMounted) {
-          return;
-        }
-
         setAgents(data.map(toAgentStatus));
         setError(null);
       } catch (fetchError) {
-        if (!isMounted) {
+        if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
           return;
         }
 
         setError(fetchError instanceof Error ? fetchError.message : 'Failed to load agents');
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
@@ -93,7 +93,7 @@ export default function HomePage() {
     }, 5000);
 
     return () => {
-      isMounted = false;
+      abortController.abort();
       window.clearInterval(intervalId);
     };
   }, []);

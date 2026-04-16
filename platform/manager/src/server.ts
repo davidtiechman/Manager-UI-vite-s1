@@ -86,10 +86,13 @@ app.get('/api/ui/agents', async (_req, res) => {
     `SELECT
       a.id,
       a.status,
+      a.selected_link,
       a.last_sync_at,
-      s.latency_ms,
-      s.reliability,
-      s.queue_size
+      sync_data.latency_ms,
+      sync_data.reliability,
+      sync_data.queue_size,
+      config_data.scheduler_mode,
+      config_data.interval_seconds
     FROM agents a
     LEFT JOIN LATERAL (
       SELECT latency_ms, reliability, queue_size
@@ -97,7 +100,14 @@ app.get('/api/ui/agents', async (_req, res) => {
       WHERE agent_id = a.id
       ORDER BY created_at DESC
       LIMIT 1
-    ) s ON TRUE
+    ) sync_data ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT scheduler_mode, interval_seconds
+      FROM agent_configurations
+      WHERE agent_id = a.id
+      ORDER BY created_at DESC
+      LIMIT 1
+    ) config_data ON TRUE
     ORDER BY a.updated_at DESC`,
   );
 
