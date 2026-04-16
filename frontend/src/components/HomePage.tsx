@@ -27,6 +27,11 @@ export default function HomePage() {
           >
             <div className="tank-icon">🛡️</div>
             <div className="agent-label">{getAgentLabel(agent)}</div>
+            <div className="agent-info">
+              <div className="info-item">יחידה: {agent.unit}</div>
+              <div className="info-item">קוד יחידה: {agent.unit_code}</div>
+              <div className="info-item">ציד ID: {agent.zayad_id}</div>
+            </div>
           </button>
         ))}
       </div>
