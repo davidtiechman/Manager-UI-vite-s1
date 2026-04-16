@@ -1,16 +1,34 @@
-export type SyncStatus = 'online' | 'warning' | 'offline';
 
-export interface AgentRow {
+export interface AgentStatus {
   id: string;
-  unit: string;
-  callSign: string;
-  status: SyncStatus;
-  selectedLink: string;
+  lastSeen: Date;
+  status: 'online' | 'warning' | 'offline';
   schedulerMode: string;
-  latencyMs: number;
-  reliability: number;
-  queue: number;
-  updatedSecondsAgo: number;
+  selectedLink: string;
+  messagesInQueue: number;
+  nextDeliveryTime: Date;
+  serverLut: Date;
+  linkType: string;
+  linkAvailable: boolean;
+  linkQuality: number;
+  unit: string;
+  unit_code: string;
+  zayad_id: string;
+  call_sign: string;
+  platformId: string;
+  platformName: string;
+}
+
+export interface AgentConfig {
+  schedulerMode: string;
+  selectedLink: string;
+  intervalMs: number;
+  maxRetries: number;
+  sparkProxyUrl: string;
+  token: string;
+  batchSize: number;
+  isManualMode: boolean;
+
 }
 
 export interface HistoryPoint {

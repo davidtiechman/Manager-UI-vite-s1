@@ -1,0 +1,42 @@
+import { useState } from 'react';
+import type { AgentStatus } from '../types';
+import Details from "../components/Details";
+import { initialAgents } from '../mockData';
+
+export default function HomePage() {
+  const [agents] = useState<AgentStatus[]>(initialAgents);
+  const [selectedAgent, setSelectedAgent] = useState<AgentStatus | null>(null);
+
+  function getAgentLabel(agent: AgentStatus) {
+    return agent.call_sign || agent.zayad_id || agent.unit_code;
+  }
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <h1>ניטור סוכנים בזמן אמת</h1>
+        <p className="muted">לחץ על אייקון כדי לראות פרטים</p>
+      </div>
+
+      <div className="agents-grid">
+        {agents.map((agent) => (
+          <button
+            key={agent.id}
+            className={`agent-card ${agent.status}`}
+            onClick={() => setSelectedAgent(agent)}
+          >
+            <div className="tank-icon">🛡️</div>
+            <div className="agent-label">{getAgentLabel(agent)}</div>
+          </button>
+        ))}
+      </div>
+
+      {selectedAgent && (
+        <Details
+          agent={selectedAgent}
+          onClose={() => setSelectedAgent(null)}
+        />
+      )}
+    </div>
+  );
+}
