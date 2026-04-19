@@ -1,0 +1,97 @@
+services:
+  manager:
+    build:
+      context: ./manager
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=manager
+      - DB_PASSWORD=manager_password
+      - DB_NAME=manager
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=manager
+      - POSTGRES_PASSWORD=manager_password
+      - POSTGRES_DB=manager
+    ports:
+      - "5432:5432"
+    volumes:
+      - manager-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U manager -d manager"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ui:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:9000
+      - HOST=0.0.0.0
+    depends_on:
+      - manager
+
+  agent-001:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      - AGENT_ID=agent-001
+      - MANAGER_URL=http://manager:9000
+    depends_on:
+      - manager
+
+  agent-002:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      - AGENT_ID=agent-002
+      - MANAGER_URL=http://manager:9000
+    depends_on:
+      - manager
+
+  agent-003:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      - AGENT_ID=agent-003
+      - MANAGER_URL=http://manager:9000
+    depends_on:
+      - manager
+
+  agent-004:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      - AGENT_ID=agent-004
+      - MANAGER_URL=http://manager:9000
+    depends_on:
+      - manager
+
+  agent-005:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    environment:
+      - AGENT_ID=agent-005
+      - MANAGER_URL=http://manager:9000
+    depends_on:
+      - manager
+
+volumes:
+  manager-db-data:
