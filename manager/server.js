@@ -8,6 +8,7 @@ app.use(express.json());
 
 const agents = {};
 const agentHistory = {};
+const agentConfigs = {};
 const pool = new Pool({
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT || 5432),
@@ -15,6 +16,21 @@ const pool = new Pool({
     password: process.env.DB_PASSWORD || 'manager_password',
     database: process.env.DB_NAME || 'manager',
 });
+
+function defaultConfig(agentId) {
+    return {
+        agentId,
+        schedulerMode: 'auto',
+        selectedLink: 'satcom',
+        intervalMs: 15000,
+        maxRetries: 3,
+        sparkProxyUrl: '',
+        token: '',
+        batchSize: 10,
+        isManualMode: false,
+        updatedAt: new Date().toISOString(),
+    };
+}
 
 async function initDb() {
     await pool.query(`
@@ -25,6 +41,14 @@ async function initDb() {
             selected_link TEXT,
             payload JSONB NOT NULL,
             received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS agent_configs (
+            agent_id TEXT PRIMARY KEY,
+            config JSONB NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
     `);
 }
@@ -41,6 +65,50 @@ async function saveAgentSync(agent) {
             agent.lastSeen,
         ],
     );
+}
+
+async function getAgentConfig(agentId) {
+    if (agentConfigs[agentId]) {
+        return agentConfigs[agentId];
+    }
+
+    const result = await pool.query(
+        'SELECT config FROM agent_configs WHERE agent_id = $1',
+        [agentId],
+    );
+
+    if (result.rows[0]) {
+        agentConfigs[agentId] = result.rows[0].config;
+        return agentConfigs[agentId];
+    }
+
+    const config = defaultConfig(agentId);
+    await saveAgentConfig(agentId, config);
+    return config;
+}
+
+async function saveAgentConfig(agentId, config) {
+    const nextConfig = {
+        ...defaultConfig(agentId),
+        ...config,
+        agentId,
+        intervalMs: Number(config.intervalMs || 15000),
+        maxRetries: Number(config.maxRetries || 3),
+        batchSize: Number(config.batchSize || 10),
+        isManualMode: Boolean(config.isManualMode),
+        updatedAt: new Date().toISOString(),
+    };
+
+    await pool.query(
+        `INSERT INTO agent_configs (agent_id, config, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (agent_id)
+         DO UPDATE SET config = EXCLUDED.config, updated_at = NOW()`,
+        [agentId, nextConfig],
+    );
+
+    agentConfigs[agentId] = nextConfig;
+    return nextConfig;
 }
 
 function createHistoryPoint() {
@@ -67,6 +135,36 @@ app.get('/api/ui/agents/:id/history', (req, res) => {
     const { id } = req.params;
     const history = agentHistory[id] || [];
     res.json(history.slice(-Number(req.query.limit || 20)).reverse());
+});
+
+app.get('/api/ui/agents/:id/config', async (req, res) => {
+    try {
+        const config = await getAgentConfig(req.params.id);
+        res.json(config);
+    } catch (error) {
+        console.error('Failed to load agent config:', error);
+        res.status(500).json({ error: 'Failed to load config' });
+    }
+});
+
+app.put('/api/ui/agents/:id/config', async (req, res) => {
+    try {
+        const config = await saveAgentConfig(req.params.id, req.body || {});
+        res.json(config);
+    } catch (error) {
+        console.error('Failed to save agent config:', error);
+        res.status(500).json({ error: 'Failed to save config' });
+    }
+});
+
+app.get('/api/agents/:id/config', async (req, res) => {
+    try {
+        const config = await getAgentConfig(req.params.id);
+        res.json(config);
+    } catch (error) {
+        console.error('Failed to send agent config:', error);
+        res.status(500).json({ error: 'Failed to load config' });
+    }
 });
 
 app.post('/api/agents/sync', async (req, res) => {

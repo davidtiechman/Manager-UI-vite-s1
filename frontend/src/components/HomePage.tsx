@@ -54,30 +54,34 @@ export default function HomePage() {
 
       <div className="agents-grid">
         {agents.map((agent) => (
-          <button
+          <div
             key={agent.id}
-            className={`agent-card ${agent.status}`}
-            onClick={() => setSelectedAgent(agent)}
+            className={`agent-tile ${selectedAgent?.id === agent.id ? 'selected' : ''}`}
           >
-            <div className="tank-icon">
-              <TankIcon status={agent.status} />
-            </div>
-            <div className="agent-label">{getAgentLabel(agent)}</div>
-            <div className="agent-info">
-              <div className="info-item">יחידה: {agent.unit}</div>
-              <div className="info-item">קוד יחידה: {agent.unit_code}</div>
-              <div className="info-item">ציד ID: {agent.zayad_id}</div>
-            </div>
-          </button>
+            <button
+              className={`agent-card ${agent.status}`}
+              onClick={() => setSelectedAgent(agent)}
+            >
+              <div className="tank-icon">
+                <TankIcon status={agent.status} />
+              </div>
+              <div className="agent-label">{getAgentLabel(agent)}</div>
+              <div className="agent-info">
+                <div className="info-item">יחידה: {agent.unit}</div>
+                <div className="info-item">קוד יחידה: {agent.unit_code}</div>
+                <div className="info-item">ציד ID: {agent.zayad_id}</div>
+              </div>
+            </button>
+
+            {selectedAgent?.id === agent.id && (
+              <Details
+                agent={selectedAgent}
+                onClose={() => setSelectedAgent(null)}
+              />
+            )}
+          </div>
         ))}
       </div>
-
-      {selectedAgent && (
-        <Details
-          agent={selectedAgent}
-          onClose={() => setSelectedAgent(null)}
-        />
-      )}
     </div>
   );
 }

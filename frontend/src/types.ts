@@ -23,6 +23,7 @@ export interface AgentStatus {
 }
 
 export interface AgentConfig {
+  agentId?: string;
   schedulerMode: string;
   selectedLink: string;
   intervalMs: number;
@@ -31,7 +32,7 @@ export interface AgentConfig {
   token: string;
   batchSize: number;
   isManualMode: boolean;
-
+  updatedAt?: string;
 }
 
 export interface HistoryPoint {
